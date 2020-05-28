@@ -6,13 +6,13 @@ class User(models.Model):
 	email = models.EmailField(max_length=500)
 	password = models.CharField(max_length=500)
 	agreement = models.BooleanField(default=0)
-	contact = models.CharField(max_length=50)
-	image_url = models.URLField(max_length=2000)
+	contact = models.CharField(max_length=50, null=True)
+	image_url = models.URLField(max_length=2000, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 	fail_count = models.IntegerField(default=0)
 	availavle = models.BooleanField(default=0)
-	position = models.CharField(max_length=100)
+	position = models.CharField(max_length=100, null=True)
 	
 	class Meta:
 		db_table = 'users'
@@ -38,8 +38,8 @@ class Matchup(models.Model):
 	matchup_career = models.ForeignKey('Matchup_career', on_delete=models.SET_NULL, null=True)
 	country = models.ForeignKey('company.Country', on_delete=models.SET_NULL, null=True)
 	income = models.IntegerField(default=0)
-	school = models.CharField(max_length=100)
-	description = models.TextField()
+	school = models.CharField(max_length=100, null=True)
+	description = models.TextField(blank=True)
 
 	class Meta:
 		db_table = 'matchup'
@@ -53,7 +53,7 @@ class Exception(models.Model):
 
 class Matchup_skill(models.Model):
 	matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
-	skill = models.CharField(max_length=50)
+	skill = models.CharField(max_length=50, null=True)
 
 	class Meta:
 		db_table = 'matchup_skills'
@@ -76,8 +76,8 @@ class Job_text(models.Model):
 class Work_information(models.Model):
 	matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=100)
-	start = models.DateField()
-	end = models.DateField()
+	start = models.DateField(null=True)
+	end = models.DateField(null=True)
 	is_working = models.BooleanField(default=0)
 
 	class Meta:
@@ -85,11 +85,11 @@ class Work_information(models.Model):
 
 class Resume(models.Model):
 	user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
-	description = models.TextField()
+	description = models.TextField(blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	status = models.BooleanField(default=0)
 	is_matchup = models.BooleanField(default=0)
-	image_url = models.URLField(max_length=2000)
+	image_url = models.URLField(max_length=2000, null=True)
 
 	class Meta:
 		db_table = 'resumes'
@@ -103,42 +103,42 @@ class Resume_file(models.Model):
 
 class Career(models.Model):
 	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-	start = models.DateField()
-	end = models.DateField()
+	start = models.DateField(null=True)
+	end = models.DateField(null=True)
 	is_working = models.BooleanField(default=0)
-	company = models.CharField(max_length=100)
-	position = models.CharField(max_length=100)
+	company = models.CharField(max_length=100, null=True)
+	position = models.CharField(max_length=100, null=True)
 	
 	class Meta:
 		db_table = 'careers'
 
 class Result(models.Model):
 	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	start = models.DateField()
-	end = models.DateField()
-	title = models.CharField(max_length=300)
-	content = models.CharField(max_length=300)
+	start = models.DateField(null=True)
+	end = models.DateField(null=True)
+	title = models.CharField(max_length=300, null=True)
+	content = models.CharField(max_length=300, null=True)
 
 	class Meta:
 		db_table = 'results'
 
 class Education(models.Model):
 	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	start = models.DateField()
-	end = models.DateField()
+	start = models.DateField(null=True)
+	end = models.DateField(null=True)
 	is_working = models.BooleanField(default=0)
-	school = models.CharField(max_length=100)
-	specialism = models.CharField(max_length=100)
-	subject = models.CharField(max_length=200)
+	school = models.CharField(max_length=100, null=True)
+	specialism = models.CharField(max_length=100, null=True)
+	subject = models.CharField(max_length=200, null=True)
 
 	class Meta:
 		db_table = 'educations'
 
 class Award(models.Model):
 	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	date = models.DateField()
-	name = models.CharField(max_length=100)
-	content = models.CharField(max_length=200)
+	date = models.DateField(null=True)
+	name = models.CharField(max_length=100, null=True)
+	content = models.CharField(max_length=200, null=True)
 
 	class Meta:
 		db_table = 'awards'
@@ -165,13 +165,13 @@ class Level(models.Model):
 
 class Test(models.Model):
 	language = models.ForeignKey('Language', on_delete=models.SET_NULL, null=True)
-	name = models.CharField(max_length=300)
-	score = models.CharField(max_length=150)
-	date = models.DateField()
+	name = models.CharField(max_length=300, null=True)
+	score = models.CharField(max_length=150, null=True)
+	date = models.DateField(null=True)
 
 	class Meta:
 		db_table = 'tests'
 
 class Link(models.Model):
 	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-	url = models.URLField(max_length=2000)
+	url = models.URLField(max_length=2000, null=True)

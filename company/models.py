@@ -25,7 +25,7 @@ class Company(models.Model):
 
 class Image(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-	image_url = models.URLField(max_length=2000)
+	image_url = models.URLField(max_length=2000, null=True)
 
 	class Meta:
 		db_table = 'images'
@@ -163,6 +163,7 @@ class Positions_item(models.Model):
 	image_url = models.URLField(max_length=2000)
 	title = models.CharField(max_length=50)
 	description = models.CharField(max_length=100)
+	click = models.IntegerField(default=0)
 
 	class Meta:
 		db_table = 'positions_items'
