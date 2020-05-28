@@ -147,11 +147,17 @@ class Item(models.Model):
 	class Meta:
 		db_table = 'items'
 
+class Expiration(models.Model):
+	name = models.CharField(max_length=50)
+
+	class Meta:
+		db_table = 'expirations'
+
 class Positions_item(models.Model):
 	position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
 	item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True)
+	expiration = models.ForeignKey('Expiration', on_delete=models.SET_NULL, null=True)
 	period = models.IntegerField(default=0)
-	expiration = models.BooleanField(default=0)
 	created_at = models.DateTimeField(auto_now_add=True)
 	used_at = models.DateField(null=True)
 	image_url = models.URLField(max_length=2000)
@@ -184,6 +190,7 @@ class Like(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
 	user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
+	status = models.BooleanField(default=0)
 
 	class Meta:
 		db_table = 'like'
