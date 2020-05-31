@@ -1,11 +1,13 @@
 from django.db import models
 
 class Company(models.Model):
-	location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True)
+	user = models.OneToOneField('user.User', on_delete=models.SET_NULL, null=True)
+	city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
 	foundation_year = models.ForeignKey('Foundation_year', on_delete=models.SET_NULL, null=True)
 	employee = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True)
 	industry = models.ForeignKey('Industry', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=100)
+	workplace = models.OneToOneField('Workplace', on_delete=models.SET_NULL, null=True, related_name='workplacee')
 	address = models.CharField(max_length=500)
 	registration_number = models.IntegerField()
 	revenue = models.IntegerField()
@@ -16,6 +18,8 @@ class Company(models.Model):
 	keyword = models.CharField(max_length=300, null=True)
 	recommender = models.CharField(max_length=100, null=True)
 	image_url = models.URLField(max_length=2000)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
 	matchup = models.ManyToManyField('user.Matchup', through='user.Exception')
 	tag = models.ManyToManyField('Tag', through='Company_tag')
 	company_matchup_items = models.ManyToManyField('Matchup_item', through='Company_matchup_item')
@@ -68,14 +72,14 @@ class Company_tag(models.Model):
 	class Meta:
 		db_table = 'companies_tags'
 
-class Work(models.Model):
-	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
+class Workplace(models.Model):
+	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, related_name='company')
 	address = models.CharField(max_length=1000)
-	lat = models.DecimalField(max_digits=10, decimal_places=7)
-	lng = models.DecimalField(max_digits=10, decimal_places=7)
+	lat = models.DecimalField(max_digits=10, decimal_places=8)
+	lng = models.DecimalField(max_digits=10, decimal_places=8)
 
 	class Meta:
-		db_table = 'works'
+		db_table = 'workplaces'
 
 class Country(models.Model):
 	name = models.CharField(max_length=100)
@@ -87,18 +91,18 @@ class Country(models.Model):
 	class Meta:
 		db_table = 'countries'
 
-class Location(models.Model):
+class City(models.Model):
 	country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=50)
 
 	class Meta:
-		db_table = 'locations'
+		db_table = 'cities'
 
 class Position(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
 	theme = models.ForeignKey('Theme', on_delete=models.SET_NULL, null=True)
 	role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True)
-	work = models.ForeignKey('Work', on_delete=models.SET_NULL, null=True)
+	workplace = models.ForeignKey('Workplace', on_delete=models.SET_NULL, null=True)
 	min_level = models.IntegerField(default=0)
 	max_level = models.IntegerField(default=0)
 	entry = models.BooleanField(default=0)
@@ -117,10 +121,17 @@ class Position(models.Model):
 	referrer = models.CharField(max_length=50)
 	volunteer = models.CharField(max_length=50)
 	total = models.CharField(max_length=50)
-	item = models.ManyToManyField('Item', through='Positions_item')
+	item = models.ManyToManyField('Item', through='Position_item')
 
 	class Meta:
 		db_table = 'positions'
+
+class Position_workplace(models.Model):
+	position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
+	workplace = models.ForeignKey('Workplace', on_delete=models.SET_NULL, null=True)
+
+	class Meta:
+		db_table = 'positions_workplaces'
 
 class Bookmark(models.Model):
 	position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
@@ -153,7 +164,7 @@ class Expiration(models.Model):
 	class Meta:
 		db_table = 'expirations'
 
-class Positions_item(models.Model):
+class Position_item(models.Model):
 	position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
 	item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True)
 	expiration = models.ForeignKey('Expiration', on_delete=models.SET_NULL, null=True)
@@ -209,7 +220,7 @@ class Role(models.Model):
 	class Meta:
 		db_table = 'roles'
 
-class Companies_matchup(models.Model):
+class Company_matchup(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
 	matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
