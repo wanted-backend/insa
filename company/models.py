@@ -7,7 +7,7 @@ class Company(models.Model):
 	employee = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True)
 	industry = models.ForeignKey('Industry', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=100)
-	workplace = models.OneToOneField('Workplace', on_delete=models.SET_NULL, null=True, related_name='workplacee')
+	workplace = models.OneToOneField('Workplace', on_delete=models.SET_NULL, null=True, related_name='workplace')
 	address = models.CharField(max_length=500)
 	registration_number = models.IntegerField()
 	revenue = models.IntegerField()
