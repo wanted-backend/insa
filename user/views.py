@@ -11,6 +11,16 @@ from datetime           import datetime
 from .models            import User, Security
 from insa.settings      import SECRET_KEY
 
+class UserEmailExists(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'MESSAGE':'True'}, status=200)
+            return JsonResponse({'MESSAGE':'False'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
 class UserRegisterView(View):
 	validation = {
 		'password': lambda password: re.match('\w{6,15}', password)
@@ -79,7 +89,6 @@ class LogInView(View):
 
 				if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
 					token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
-					print('로그인 유저는 ',user.id)
 					Security.objects.create(
 						user_id = user.id,
 						user_ip = request.META['REMOTE_ADDR'],
