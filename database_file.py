@@ -123,7 +123,8 @@ with open(CSV_PATH, newline='') as csvfile:
 
     for row in data_reader:
         Tag.objects.create(
-            name = row['name']
+            name = row['name'],
+            category = Category.objects.get(id=row['categories_id'])
         )
         print(row)
 
@@ -242,7 +243,7 @@ with open(CSV_PATH, newline='') as csvfile:
 CSV_PATH = './csv/positions.csv'
 with open(CSV_PATH, newline='') as csvfile:
     data_reader = csv.DictReader(csvfile)
-        
+
     for row in data_reader:
         expiry_date = None if row['expiry_date'] == '' else row['expiry_date']
         preferred = None if row['preferred'] == '' else row['preferred']
