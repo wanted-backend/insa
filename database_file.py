@@ -11,7 +11,7 @@ print("BASE_DIR=", end=""), print(BASE_DIR)
 
 sys.path.append(BASE_DIR)
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "willy.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "insa.settings")
 django.setup()
 
 from company.models import *
