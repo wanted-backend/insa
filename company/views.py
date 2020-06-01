@@ -2,8 +2,9 @@ import json
 
 from django.http        import JsonResponse, HttpResponse
 from django.views       import View
-from utils         import login_decorator
-from company.models     import *
+
+from utils              import login_decorator, login_check
+from company.models     import Company, City, Foundation_year, Employee, Industry, Workplace, Position, Role, Position_workplace, Country, Tag, Company_tag, Bookmark
 
 class CompanyRegister(View):
 	@login_decorator
@@ -154,4 +155,65 @@ class PositionList(View):
                 'always':position.always
 			} for position in positions
 		]
-		return JsonResponse({'company':data}, status=200)
+		
+                return JsonResponse({'company':data}, status=200)
+
+class DetailView(View):
+    @login_check
+    def get(self, request, position_id):
+        RECOMENDATION_LIMIT=8
+        
+        try: 
+            user_id = request.user.id
+        except:
+            user_id = None
+        
+        position = Position.objects.select_related('company', 'role').prefetch_related('position_workplace_set').get(id=position_id)
+        workplace =  position.position_workplace_set.get().workplace
+        position_list = [{
+            'detail_images':[image.image_url for image in position.company.image_set.all()],
+            'name':position.name,
+            'company':position.company.name,
+            'city':workplace.city.name if workplace.city else None,
+            'country':workplace.country.name,
+            'tag':[tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
+            'bookmark':True if Bookmark.objects.filter(user_id=user_id, position_id=position_id) else False,
+            'reward' :{
+                'referrer':position.referrer,
+                'volunteer':position.volunteer,
+            },
+            'body':{
+                'description':position.description,
+                'main_task':position.responsibility,
+                'qualification':position.qualification,
+                'preffered':position.preferred,
+                'benefit':position.benefit
+            },
+            'info':{
+                'always':{
+                    'value':position.always,
+                    'expiry_date':position.expiry_date
+                },
+                'location':{
+                    'full_location':workplace.address,
+                    'lat':workplace.lat,
+                    'lng':workplace.lng,
+                },
+                'company':{
+                    'image':position.company.image_url,
+                    'name':position.company.name,
+                    'industry_name':position.company.industry.name
+                }
+            },
+            'recommendation':[{
+                'id':item.id,
+                'iimage':item.company.image_set.all().first().image_url,
+                'name':item.name,
+                'company':item.company.name,
+                'location':item.position_workplace_set.get().workplace.city.name if item.position_workplace_set.get().workplace.city else None,
+                'country':item.position_workplace_set.get().workplace.country.name,
+                'reward':item.total
+                }for item in Position.objects.order_by('?') if item.role.job_category_id==position.role.job_category_id][:RECOMENDATION_LIMIT]
+            }]
+        return JsonResponse({'position':position_list}, status=200)
+

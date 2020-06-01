@@ -71,15 +71,16 @@ class Company_tag(models.Model):
 		db_table = 'companies_tags'
 
 class Workplace(models.Model):
-	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, related_name='company')
-	city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
-	address = models.CharField(max_length=1000)
-	lat = models.DecimalField(max_digits=10, decimal_places=7)
-	lng = models.DecimalField(max_digits=10, decimal_places=7)
-	represent = models.BooleanField(default=0)
+        company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, related_name='company')
+        country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
+        city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
+        address = models.CharField(max_length=1000)
+        lat = models.DecimalField(max_digits=10, decimal_places=7)
+        lng = models.DecimalField(max_digits=10, decimal_places=7)
+        represent = models.BooleanField(default=0)
 
-	class Meta:
-		db_table = 'workplaces'
+        class Meta:
+            db_table = 'workplaces'
 
 class Country(models.Model):
 	name = models.CharField(max_length=100)
@@ -99,32 +100,32 @@ class City(models.Model):
 		db_table = 'cities'
 
 class Position(models.Model):
-	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-	theme = models.ForeignKey('Theme', on_delete=models.SET_NULL, null=True)
-	role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True)
-	workplace = models.ForeignKey('Workplace', on_delete=models.SET_NULL, null=True)
-	min_level = models.IntegerField(default=0)
-	max_level = models.IntegerField(default=0)
-	entry = models.BooleanField(default=0)
-	mim_wage = models.IntegerField(default=0)
-	max_wage = models.IntegerField(default=0)
-	expiry_date = models.DateField(null=True)
-	always = models.BooleanField(default=0)
-	name = models.CharField(max_length=100)
-	description = models.TextField()
-	responsibility = models.TextField()
-	qualification = models.TextField()
-	preferred = models.TextField(blank=True, null=True)
-	benifit = models.TextField()
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
-	referrer = models.CharField(max_length=50)
-	volunteer = models.CharField(max_length=50)
-	total = models.CharField(max_length=150)
-	item = models.ManyToManyField('Item', through='Position_item')
+        company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
+        theme = models.ForeignKey('Theme', on_delete=models.SET_NULL, null=True)
+        role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True)
+        workplace = models.ForeignKey('Workplace', on_delete=models.SET_NULL, null=True)
+        min_level = models.IntegerField(default=0)
+        max_level = models.IntegerField(default=0)
+        entry = models.BooleanField(default=0)
+        mim_wage = models.IntegerField(default=0)
+        max_wage = models.IntegerField(default=0)
+        expiry_date = models.DateField(null=True)
+        always = models.BooleanField(default=0)
+        name = models.CharField(max_length=100)
+        description = models.TextField()
+        responsibility = models.TextField()
+        qualification = models.TextField()
+        preferred = models.TextField(blank=True, null=True)
+        benefit = models.TextField()
+        created_at = models.DateTimeField(auto_now_add=True)
+        updated_at = models.DateTimeField(auto_now=True)
+        referrer = models.CharField(max_length=50)
+        volunteer = models.CharField(max_length=50)
+        total = models.CharField(max_length=150)
+        item = models.ManyToManyField('Item', through='Position_item')
 
-	class Meta:
-		db_table = 'positions'
+        class Meta:
+            db_table = 'positions'
 
 class Position_workplace(models.Model):
 	position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
