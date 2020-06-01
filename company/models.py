@@ -7,8 +7,6 @@ class Company(models.Model):
 	employee = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True)
 	industry = models.ForeignKey('Industry', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=100)
-	workplace = models.OneToOneField('Workplace', on_delete=models.SET_NULL, null=True, related_name='workplace')
-	address = models.CharField(max_length=500)
 	registration_number = models.IntegerField()
 	revenue = models.IntegerField()
 	description = models.TextField()
@@ -20,6 +18,7 @@ class Company(models.Model):
 	image_url = models.URLField(max_length=2000)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
+	deleted = models.BooleanField(default=0)
 	matchup = models.ManyToManyField('user.Matchup', through='user.Exception')
 	tag = models.ManyToManyField('Tag', through='Company_tag')
 	company_matchup_items = models.ManyToManyField('Matchup_item', through='Company_matchup_item')
@@ -41,7 +40,7 @@ class Industry(models.Model):
 		db_table = 'industries'
 
 class Employee(models.Model):
-	name = models.CharField(max_length=50)
+	number = models.CharField(max_length=50)
 
 	class Meta:
 		db_table = 'employees'
@@ -74,9 +73,11 @@ class Company_tag(models.Model):
 
 class Workplace(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, related_name='company')
+	city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
 	address = models.CharField(max_length=1000)
-	lat = models.DecimalField(max_digits=10, decimal_places=8)
-	lng = models.DecimalField(max_digits=10, decimal_places=8)
+	lat = models.DecimalField(max_digits=10, decimal_places=7)
+	lng = models.DecimalField(max_digits=10, decimal_places=7)
+	represent = models.BooleanField(default=0)
 
 	class Meta:
 		db_table = 'workplaces'
@@ -106,7 +107,7 @@ class Position(models.Model):
 	min_level = models.IntegerField(default=0)
 	max_level = models.IntegerField(default=0)
 	entry = models.BooleanField(default=0)
-	min_wage = models.IntegerField(default=0)
+	mim_wage = models.IntegerField(default=0)
 	max_wage = models.IntegerField(default=0)
 	expiry_date = models.DateField(null=True)
 	always = models.BooleanField(default=0)
@@ -114,13 +115,13 @@ class Position(models.Model):
 	description = models.TextField()
 	responsibility = models.TextField()
 	qualification = models.TextField()
-	preferred = models.TextField(blank=True)
+	preferred = models.TextField(blank=True, null=True)
 	benifit = models.TextField()
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 	referrer = models.CharField(max_length=50)
 	volunteer = models.CharField(max_length=50)
-	total = models.CharField(max_length=50)
+	total = models.CharField(max_length=150)
 	item = models.ManyToManyField('Item', through='Position_item')
 
 	class Meta:

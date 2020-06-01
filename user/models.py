@@ -11,7 +11,7 @@ class User(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 	fail_count = models.IntegerField(default=0)
-	availavle = models.BooleanField(default=0)
+	deleted = models.BooleanField(default=0)
 	position = models.CharField(max_length=100, null=True)
 	
 	class Meta:
