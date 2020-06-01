@@ -2,7 +2,6 @@ from django.db import models
 
 class Company(models.Model):
 	user = models.OneToOneField('user.User', on_delete=models.SET_NULL, null=True)
-	city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
 	foundation_year = models.ForeignKey('Foundation_year', on_delete=models.SET_NULL, null=True)
 	employee = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True)
 	industry = models.ForeignKey('Industry', on_delete=models.SET_NULL, null=True)
