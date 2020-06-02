@@ -2,9 +2,8 @@ import json
 
 from django.http        import JsonResponse, HttpResponse
 from django.views       import View
-
-from utils              import login_decorator
-from company.models     import Company, City, Foundation_year, Employee, Industry, Workplace, Position, Role
+from utils         import login_decorator
+from company.models     import *
 
 class CompanyRegister(View):
 	@login_decorator
@@ -68,6 +67,41 @@ class CompanyRegister(View):
 			}
 		]
 		return JsonResponse({'company':data}, status=200)
+
+class ThemeTop(View):
+    
+    def get(self,request,theme_id):
+        
+        themes = Theme.objects.get(id=theme_id)
+        
+        themetop = {
+			"theme_title"             : themes.title,
+            "theme_description"       : themes.description,
+            "theme_inner_image"       : themes.inner_image_url,
+            "theme_inner_description" : themes.inner_description,
+		}
+        
+        return JsonResponse({"theme_top" : themetop},status=200)
+
+class ThemeList(View):
+    
+    def get(self,request,theme_id):
+        
+        offset = int(request.GET.get('offset'))
+        limit  = int(request.GET.get('limit'))
+        themes = Position.objects.filter(theme_id=theme_id)
+
+        themelist = [{
+            "item_id"       : position.id,
+            "item_image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
+			"item_title"    : position.name,
+            "item_company"  : position.company.name,
+            "item_location" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
+            "item_country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
+            "item_reward"   : position.total
+		} for position in themes[offset:offset + limit-1]]
+        
+        return JsonResponse({"theme_list":themelist},status=200)
 
 class CompanyPosition(View):
 	@login_decorator
