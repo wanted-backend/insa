@@ -12,7 +12,7 @@ class User(models.Model):
 	updated_at = models.DateTimeField(auto_now=True)
 	fail_count = models.IntegerField(default=0)
 	deleted = models.BooleanField(default=0)
-	position = models.CharField(max_length=100, null=True)
+	job_position = models.CharField(max_length=100, null=True)
 	
 	class Meta:
 		db_table = 'users'
