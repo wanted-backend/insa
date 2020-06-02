@@ -12,7 +12,7 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     fail_count = models.IntegerField(default=0)
     deleted = models.BooleanField(default=0)
-    position = models.CharField(max_length=100, null=True)
+    job_position = models.CharField(max_length=100, null=True)
     user_bookmark = models.ManyToManyField('company.Position', through='company.Bookmark', related_name='user_bookmark')
     
     class Meta:
@@ -86,7 +86,11 @@ class Work_information(models.Model):
         db_table = 'work_informations'
 
 class Resume(models.Model):
-    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)  
+    title = models.CharField(max_length=100, null=True)
+    name = models.CharField(max_length=50, null=True)
+    contact = models.CharField(max_length=50, null=True)
+    email = models.CharField(max_length=50, null=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=0)
@@ -116,6 +120,16 @@ class Career(models.Model):
 
 class Result(models.Model):
     career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+    title = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
+    contact = models.CharField(max_length=50)
+    email = models.CharField(max_length=50)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.BooleanField(default=0)
+    is_matchup = models.BooleanField(default=0)
+    image_url = models.URLField(max_length=2000, null=True)    
     start = models.DateField(null=True)
     end = models.DateField(null=True)
     title = models.CharField(max_length=300, null=True)

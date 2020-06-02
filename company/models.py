@@ -74,6 +74,7 @@ class Company_tag(models.Model):
 
 class Workplace(models.Model):
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, related_name='company')
+    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
     city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
     address = models.CharField(max_length=1000)
     lat = models.DecimalField(max_digits=10, decimal_places=7)
@@ -117,7 +118,7 @@ class Position(models.Model):
     responsibility = models.TextField()
     qualification = models.TextField()
     preferred = models.TextField(blank=True, null=True)
-    benifit = models.TextField()
+    benefit = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     referrer = models.CharField(max_length=50)
@@ -126,6 +127,7 @@ class Position(models.Model):
     position_items = models.ManyToManyField('Item', through='Position_item', related_name='position_items')
     position_workplaces = models.ManyToManyField('Workplace', through='Position_workplace', related_name='position_workplaces')
     position_volunteers = models.ManyToManyField('user.User', through='Volunteers', related_name='position_volunteers')
+    bookmarks = models.ManyToManyField('user.User', through='Bookmark')
 
     class Meta:
         db_table = 'positions'
@@ -141,7 +143,7 @@ class Bookmark(models.Model):
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=0)
+    status = models.BooleanField(default=1)
 
     class Meta:
         db_table = 'bookmarks'
@@ -197,7 +199,7 @@ class Volunteers(models.Model):
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=0)
+    status = models.BooleanField(default=1)
 
     class Meta:
         db_table = 'volunteers'
