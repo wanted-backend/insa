@@ -123,7 +123,8 @@ class Position(models.Model):
         volunteer = models.CharField(max_length=50)
         total = models.CharField(max_length=150)
         item = models.ManyToManyField('Item', through='Position_item')
-
+        bookmarks = models.ManyToManyField('user.user', through='Bookmark')
+        
         class Meta:
             db_table = 'positions'
 

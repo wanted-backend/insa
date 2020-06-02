@@ -1,10 +1,13 @@
 import json
 
-from django.http        import JsonResponse, HttpResponse
-from django.views       import View
+from django.http            import JsonResponse, HttpResponse
+from django.views           import View
+from django.db.models       import Q
+from django.core.exceptions import ObjectDoesNotExist
 
-from utils              import login_decorator, login_check
-from company.models     import Company, City, Foundation_year, Employee, Industry, Workplace, Position, Role, Position_workplace, Country, Tag, Company_tag, Bookmark
+from utils                  import login_decorator, login_check
+from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image
+from user.models            import User
 
 class CompanyRegister(View):
 	@login_decorator
@@ -143,20 +146,20 @@ class CompanyPosition(View):
 			return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
 class PositionList(View):
-	@login_decorator
-	def get(self, request):
-		user = request.user
-		company = Company.objects.get(user_id=user.id)
-		positions = Position.objects.filter(company_id=company.id)
-		data = [
-			{
-				'name':position.name,
-				'expiry_date':position.expiry_date,
-                'always':position.always
-			} for position in positions
-		]
+    @login_decorator
+    def get(self, request):
+        user = request.user
+        company = Company.objects.get(user_id=user.id)
+        positions = Position.objects.filter(company_id=company.id)
+        data = [
+                {
+                    'name':position.name,
+                    'expiry_date':position.expiry_date,
+                    'always':position.always
+                } for position in positions
+                ]
 		
-                return JsonResponse({'company':data}, status=200)
+        return JsonResponse({'company':data}, status=200)
 
 class DetailView(View):
     @login_check
@@ -177,7 +180,7 @@ class DetailView(View):
             'city':workplace.city.name if workplace.city else None,
             'country':workplace.country.name,
             'tag':[tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
-            'bookmark':True if Bookmark.objects.filter(user_id=user_id, position_id=position_id) else False,
+            'bookmark':Bookmark.objects.filter(Q(user_id=user_id) & Q(position_id=position_id)).exists(),
             'reward' :{
                 'referrer':position.referrer,
                 'volunteer':position.volunteer,
@@ -207,7 +210,7 @@ class DetailView(View):
             },
             'recommendation':[{
                 'id':item.id,
-                'iimage':item.company.image_set.all().first().image_url,
+                'image':item.company.image_set.all().first().image_url,
                 'name':item.name,
                 'company':item.company.name,
                 'location':item.position_workplace_set.get().workplace.city.name if item.position_workplace_set.get().workplace.city else None,
@@ -217,3 +220,15 @@ class DetailView(View):
             }]
         return JsonResponse({'position':position_list}, status=200)
 
+class PositionBookmarkView(View):
+    @login_decorator
+    def get(self, request, position_id):
+        try:
+            if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
+                Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
+                return HttpResponse(status=200)
+            Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
+            return HttpResponse(status=200)
+        except Position.DoesNotExist:
+            return JsonResponse({'message':'INVALID_POSITION'}, status=400)
+        
