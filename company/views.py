@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
                                 Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Like
-from user.models            import User
+from user.models            import User, Matchup, Work_information
 
 class CompanyRegister(View):
 	@login_decorator
@@ -137,10 +137,14 @@ class LikedMatchupResume(View):
                 matchup = Matchup.objects.get(id=matchup_id)
                 user = request.user
                 company = Company.objects.get(user_id=user.id)
+                like = Like.objects.get(company_id=company.id, matchup_id=matchup_id)
                 
-                if Like.objects.filter(company_id=company.id, matchup_id=matchup_id).exists():
-                    like = Like.objects.get(company_id=company.id, matchup_id=matchup_id)
+                if like.status==True:
                     like.status = False
+                    like.save()
+                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+                if like.status==False:
+                    like.status = True
                     like.save()
                     return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
                 Like.objects.create(
@@ -151,6 +155,31 @@ class LikedMatchupResume(View):
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class LikedMatchupList(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            user = request.user
+            company = Company.objects.get(user_id=user.id)
+            likes = Like.objects.filter(company_id=company.id, status=True)
+            for like in likes:
+                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=like.matchup.user.id)
+                data = [
+                    {
+                        'id':like.id,
+                        'name':like.matchup.user.name,
+                        'description':like.matchup.description,
+                        'role':like.matchup.role.name,
+                        'career':like.matchup.matchup_career.year,
+                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
+                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+                        'education':like.matchup.school,
+                    }
+                ]
+                return JsonResponse({'liked_matchup':data}, status=200)
+        except ValueError:
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
 class DetailView(View):
     @login_check
