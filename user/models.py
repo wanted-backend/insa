@@ -13,6 +13,7 @@ class User(models.Model):
 	fail_count = models.IntegerField(default=0)
 	deleted = models.BooleanField(default=0)
 	position = models.CharField(max_length=100, null=True)
+	user_bookmark = models.ManyToManyField('company.Position', through='company.Bookmark', related_name='user_bookmark')
 	
 	class Meta:
 		db_table = 'users'
@@ -40,6 +41,7 @@ class Matchup(models.Model):
 	income = models.IntegerField(default=0)
 	school = models.CharField(max_length=100, null=True)
 	description = models.TextField(blank=True)
+	companies_exception = models.ManyToManyField('company.Company', through='Exception', related_name='companies_exception')
 
 	class Meta:
 		db_table = 'matchup'

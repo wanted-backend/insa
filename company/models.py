@@ -18,9 +18,11 @@ class Company(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 	deleted = models.BooleanField(default=0)
-	matchup = models.ManyToManyField('user.Matchup', through='user.Exception')
-	tag = models.ManyToManyField('Tag', through='Company_tag')
-	company_matchup_items = models.ManyToManyField('Matchup_item', through='Company_matchup_item')
+	companies_like_matchup = models.ManyToManyField('user.Matchup', through='Like', related_name='companies_like_matchup')
+	companies_reading = models.ManyToManyField('user.Matchup', through='Reading', related_name='companies_reading')
+	companies_tag = models.ManyToManyField('Tag', through='Company_tag', related_name='companies_tag')
+	companies_matchup = models.ManyToManyField('user.Matchup', through='Company_matchup', related_name='companies_matchup')
+	companies_matchup_items = models.ManyToManyField('Matchup_item', through='Company_matchup_item', related_name='companies_matchup_items')
 
 	class Meta:
 		db_table = 'companies'
@@ -121,7 +123,9 @@ class Position(models.Model):
 	referrer = models.CharField(max_length=50)
 	volunteer = models.CharField(max_length=50)
 	total = models.CharField(max_length=150)
-	item = models.ManyToManyField('Item', through='Position_item')
+	position_items = models.ManyToManyField('Item', through='Position_item', related_name='position_items')
+	position_workplaces = models.ManyToManyField('Workplace', through='Position_workplace', related_name='position_workplaces')
+	position_volunteers = models.ManyToManyField('user.User', through='Volunteers', related_name='position_volunteers')
 
 	class Meta:
 		db_table = 'positions'
@@ -200,7 +204,7 @@ class Volunteers(models.Model):
 
 class Like(models.Model):
 	company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-	user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
+	matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	status = models.BooleanField(default=0)
 
