@@ -159,6 +159,7 @@ with open(CSV_PATH, newline='') as csvfile:
 
         Workplace.objects.create(
             company = Company.objects.get(id=row['companies_id']),
+            country = Country.objects.get(id=row['countries_id']),
             city = cities_id,
             address = row['address'],
             lat = row['lat'],
@@ -265,7 +266,7 @@ with open(CSV_PATH, newline='') as csvfile:
             responsibility = row['responsibility'],
             qualification = row['qualification'],
             preferred = preferred,
-            benifit = row['benifit'],
+            benefit = row['benefit'],
             created_at = row['created_at'],
             updated_at = row['updated_at'],
             referrer = row['referrer'],

@@ -7,7 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
-                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image
+                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers
 from user.models            import User
 
 class CompanyRegister(View):
@@ -133,9 +133,9 @@ class DetailView(View):
         RECOMENDATION_LIMIT=8
         
         try: 
-            user_id = request.user.id
+            user_id=request.user.id
         except:
-            user_id = None
+            user_id=None
         
         position = Position.objects.select_related('company', 'role').prefetch_related('position_workplace_set').get(id=position_id)
         workplace =  position.position_workplace_set.get().workplace
@@ -188,12 +188,42 @@ class DetailView(View):
 
 class PositionBookmarkView(View):
     @login_decorator
-    def get(self, request, position_id):
+    def post(self, request, position_id):
         try:
             if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
                 Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
                 return HttpResponse(status=200)
             Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
             return HttpResponse(status=200)
+        
         except Position.DoesNotExist:
             return JsonResponse({'message':'INVALID_POSITION'}, status=400)
+
+class PositionApplyView(View):
+    @login_decorator
+    def get(self, request, position_id):
+        user_id=request.user.id
+        
+        user=User.objects.prefetch_related('resume_set').filter(user_id=user_id)
+        apply_info:{
+            'name':user.name,
+            'email':user.email,
+            'resume':[{
+                'title':resume.title,
+                'created_at':resume.created_at,
+                'status':True if status==1 else False
+            }for resume in user.resume_set.all()]
+        }
+        return JsonResponse({'apply_info':apply_info}, status=200)
+    
+    @login_decorator
+    def post(self, request, position_id):
+        user_id=request.user.id
+        
+        Volunteers.objects.create(
+            position_id=position_id,
+            user_id=request.user.id,
+        )
+        return HttpResponse(status=200)
+
+
