@@ -7,7 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
-                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image
+                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Like
 from user.models            import User
 
 class CompanyRegister(View):
@@ -126,6 +126,31 @@ class PositionList(View):
                 ]
 		
         return JsonResponse({'company':data}, status=200)
+
+class LikedMatchupResume(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'matchup_id' in data:
+                matchup_id = data['matchup_id']
+                matchup = Matchup.objects.get(id=matchup_id)
+                user = request.user
+                company = Company.objects.get(user_id=user.id)
+                
+                if Like.objects.filter(company_id=company.id, matchup_id=matchup_id).exists():
+                    like = Like.objects.get(company_id=company.id, matchup_id=matchup_id)
+                    like.status = False
+                    like.save()
+                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+                Like.objects.create(
+                    company_id=company.id,
+                    matchup_id=matchup_id,
+                    status = True
+                )
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
 class DetailView(View):
     @login_check
