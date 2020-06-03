@@ -365,8 +365,8 @@ class HomeView(View):
             "item_logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
 		}for theme in themes[:4]]
         
-        Recommendations_of_the_week = [{
-			"item_image"    : recommend.company.image_set.all().first().image_url,
+        recommendations_of_the_week = [{
+            "item_image"    : recommend.company.image_set.all().first().image_url,
             "item_name"     : recommend.name,
             "item_company"  : recommend.company.name,
             "item_location" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
@@ -377,5 +377,5 @@ class HomeView(View):
         return JsonResponse({"position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
-                             "Recommendation_week" : Recommendations_of_the_week
+                             "Recommendation_week" : recommendations_of_the_week
                             },status=200)
