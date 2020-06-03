@@ -8,8 +8,9 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from datetime           import datetime
 
-from .models            import User, Security
+from .models            import User, Security, Want
 from insa.settings      import SECRET_KEY
+from utils              import login_decorator
 
 class UserEmailExists(View):
     def post(self, request):
@@ -99,3 +100,16 @@ class LogInView(View):
 				return HttpResponse(status=401)
 		except KeyError:
 			return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
+
+class LikedCompanies(View):
+    @login_decorator
+    def get(self, request):
+        companies = Want.objects.filter(user_id=request.user.id)
+        data = [
+            {
+                'name':want.company.name,
+                'logo':want.company.image_url,
+                'date':want.created_at
+            } for want in companies
+        ]
+        return JsonResponse({'companies':data}, status=200)

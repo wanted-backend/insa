@@ -18,6 +18,11 @@ class User(models.Model):
     class Meta:
         db_table = 'users'
 
+class Want(models.Model):
+    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+    company = models.ForeignKey('company.Company', on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
 class Security(models.Model):
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
     user_ip = models.CharField(max_length=100)

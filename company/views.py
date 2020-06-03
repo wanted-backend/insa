@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
                                 Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like
-from user.models            import User, Matchup, Work_information, Matchup_skill
+from user.models            import User, Matchup, Work_information, Matchup_skill, Want
 
 class CompanyRegister(View):
 	@login_decorator
@@ -135,15 +135,18 @@ class LikedMatchupResume(View):
                 matchup_id = data['matchup_id']
                 matchup = Matchup.objects.get(id=matchup_id)
                 company = Company.objects.get(user_id=request.user.id)
-                if Like.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
-                    like = Like.objects.get(company_id=company.id, matchup_id=matchup_id, status=True)
-                    like.status = False
-                    like.save()
+                like = Like.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True)
+                if like.exists():
+                    like.delete()
                     return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
                 Like.objects.create(
                     company_id=company.id,
                     matchup_id=matchup_id,
                     status = True
+                )
+                Want.objects.create(
+                    user_id=matchup.user.id,
+                    company_id=company.id
                 )
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
