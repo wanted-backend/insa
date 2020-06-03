@@ -140,7 +140,7 @@ class Result(models.Model):
         db_table = 'results'
 
 class Education(models.Model):
-    career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     start = models.DateField(null=True)
     end = models.DateField(null=True)
     is_working = models.BooleanField(default=0)
@@ -152,7 +152,7 @@ class Education(models.Model):
         db_table = 'educations'
 
 class Award(models.Model):
-    career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     date = models.DateField(null=True)
     name = models.CharField(max_length=100, null=True)
     content = models.CharField(max_length=200, null=True)
@@ -161,7 +161,7 @@ class Award(models.Model):
         db_table = 'awards'
 
 class Language(models.Model):
-    career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     linguistic = models.ForeignKey('Linguistic', on_delete=models.SET_NULL, null=True)
     level = models.ForeignKey('Level', on_delete=models.SET_NULL, null=True)
 

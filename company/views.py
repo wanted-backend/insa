@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
                                 Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like
-from user.models            import User, Matchup, Work_information
+from user.models            import User, Matchup, Work_information, Matchup_skill
 
 class CompanyRegister(View):
 	@login_decorator
@@ -102,7 +102,7 @@ class CompanyPosition(View):
 				responsibility = data['responsibility'],
 				qualification = data['qualification'],
 				preferred = is_preferred,
-				benifit = data['benifit'],
+				benefit = data['benefit'],
 				referrer = data['referrer'],
 				volunteer = data['volunteer'],
 				total = data['total']
@@ -120,8 +120,7 @@ class PositionList(View):
         data = [
                 {
                     'name':position.name,
-                    'expiry_date':position.expiry_date,
-                    'always':position.always
+                    'expiry_date':position.expiry_date if position.expiry_date else position.always,
                 } for position in positions
                 ]
 		
@@ -135,16 +134,10 @@ class LikedMatchupResume(View):
             if 'matchup_id' in data:
                 matchup_id = data['matchup_id']
                 matchup = Matchup.objects.get(id=matchup_id)
-                user = request.user
-                company = Company.objects.get(user_id=user.id)
-                like = Like.objects.get(company_id=company.id, matchup_id=matchup_id)
-                
-                if like.status==True:
+                company = Company.objects.get(user_id=request.user.id)
+                if Like.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
+                    like = Like.objects.get(company_id=company.id, matchup_id=matchup_id, status=True)
                     like.status = False
-                    like.save()
-                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-                if like.status==False:
-                    like.status = True
                     like.save()
                     return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
                 Like.objects.create(
@@ -167,7 +160,7 @@ class LikedMatchupList(View):
                 matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=like.matchup.user.id)
                 data = [
                     {
-                        'id':like.id,
+                        'id':like.user.id,
                         'name':like.matchup.user.name,
                         'description':like.matchup.description,
                         'role':like.matchup.role.name,
@@ -180,6 +173,24 @@ class LikedMatchupList(View):
                 return JsonResponse({'liked_matchup':data}, status=200)
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+
+class UnreadMatchup(View):
+    @login_decorator
+    def get(self, request):
+        matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set') 
+        data = [
+            {
+                'id':match.user.id,
+                'user':match.user.name,
+                'role':match.role.name,
+                'career':match.matchup_career.year,
+                'description':match.resume.description if match.resume.status == True else match.description,
+                'skills':list(Matchup_skill.objects.filter(matchup_id=match.id).values('id', 'skill')),
+                'work_info':list(Work_information.objects.filter(matchup_id=match.id).values('id', 'name', 'start', 'end', 'is_working')),
+                'education':match.school
+            } for match in matchup
+        ]
+        return JsonResponse({'unlead_matchup':data}, status=200)
 
 class DetailView(View):
     @login_check
