@@ -122,7 +122,7 @@ class PositionList(View):
                     'expiry_date':position.expiry_date if position.expiry_date else position.always,
                 } for position in positions
                 ]
-		
+
         return JsonResponse({'company':data}, status=200)
 
 class LikedMatchupResume(View):
@@ -179,7 +179,7 @@ class LikedMatchupList(View):
 class UnreadMatchup(View):
     @login_decorator
     def get(self, request):
-        matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set') 
+        matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set')
         data = [
             {
                 'id':match.user.id,
@@ -198,12 +198,12 @@ class DetailView(View):
     @login_check
     def get(self, request, position_id):
         RECOMENDATION_LIMIT=8
-        
-        try: 
+
+        try:
             user_id=request.user.id
         except:
             user_id=None
-        
+
         position = Position.objects.select_related('company', 'role').prefetch_related('position_workplace_set').get(id=position_id)
         workplace =  position.position_workplace_set.get().workplace
         position_list = [{
@@ -262,7 +262,7 @@ class PositionBookmarkView(View):
                 return HttpResponse(status=200)
             Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
             return HttpResponse(status=200)
-        
+
         except Position.DoesNotExist:
             return JsonResponse({'message':'INVALID_POSITION'}, status=400)
 
@@ -270,7 +270,7 @@ class PositionApplyView(View):
     @login_decorator
     def get(self, request, position_id):
         user_id=request.user.id
-        
+
         user=User.objects.prefetch_related('resume_set').filter(user_id=user_id)
         apply_info:{
             'name':user.name,
@@ -282,11 +282,11 @@ class PositionApplyView(View):
             }for resume in user.resume_set.all()]
         }
         return JsonResponse({'apply_info':apply_info}, status=200)
-    
+
     @login_decorator
     def post(self, request, position_id):
         user_id=request.user.id
-        
+
         Volunteers.objects.create(
             position_id=position_id,
             user_id=request.user.id,
@@ -294,24 +294,24 @@ class PositionApplyView(View):
         return HttpResponse(status=200)
 
 class ThemeTop(View):
-    
+
     def get(self,request,theme_id):
-        
+
         themes = Theme.objects.get(id=theme_id)
-        
+
         themetop = {
 			"theme_title"             : themes.title,
             "theme_description"       : themes.description,
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
 		}
-        
+
         return JsonResponse({"theme_top" : themetop},status=200)
 
 class ThemeList(View):
-    
+
     def get(self,request,theme_id):
-        
+
         offset = int(request.GET.get('offset'))
         limit  = int(request.GET.get('limit'))
         themes = Position.objects.filter(theme_id=theme_id)
@@ -325,19 +325,19 @@ class ThemeList(View):
             "item_country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
             "item_reward"   : position.total
 		} for position in themes[offset:offset + limit-1]]
-        
+
         return JsonResponse({"theme_list":themelist},status=200)
 
 class HomeView(View):
 
     @login_check
     def get(self,request):
-        
+
         user = request.user
         roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
         mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
-        
+
         user_recomended_position = [{
 			"item_id"       : position.id,
             "item_image"    : position.company.image_set.all().first().image_url,
@@ -347,7 +347,7 @@ class HomeView(View):
             "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
             "item_reward"   : position.total,
 		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
-        
+
         new_employment = [{
 			"item_id"       : position.id,
             "item_image"    : position.company.image_set.all().first().image_url,
@@ -357,14 +357,14 @@ class HomeView(View):
             "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
             "item_reward"   : position.total,
 		}for position in Position.objects.order_by('created_at')[:4]]
-        
+
         theme_list = [{
             "item_image"    : theme.image_url,
             "item_title"    : theme.title,
             "item_desc"     : theme.description,
             "item_logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
 		}for theme in themes[:4]]
-        
+
         recommendations_of_the_week = [{
             "item_image"    : recommend.company.image_set.all().first().image_url,
             "item_name"     : recommend.name,
@@ -373,7 +373,7 @@ class HomeView(View):
             "item_country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
             "item_reward"   : recommend.total,
 		}for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
-        
+
         return JsonResponse({"position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
