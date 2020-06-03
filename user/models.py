@@ -13,7 +13,7 @@ class User(models.Model):
 	fail_count = models.IntegerField(default=0)
 	deleted = models.BooleanField(default=0)
 	position = models.CharField(max_length=100, null=True)
-	
+
 	class Meta:
 		db_table = 'users'
 
@@ -22,7 +22,7 @@ class Security(models.Model):
 	user_ip = models.CharField(max_length=100)
 	browser = models.CharField(max_length=100)
 	date = models.DateField(auto_now=True)
-	
+
 	class Meta:
 		db_table = 'security'
 
@@ -84,48 +84,53 @@ class Work_information(models.Model):
 		db_table = 'work_informations'
 
 class Resume(models.Model):
-	user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
-	description = models.TextField(blank=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	status = models.BooleanField(default=0)
-	is_matchup = models.BooleanField(default=0)
-	image_url = models.URLField(max_length=2000, null=True)
+        user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+        title = models.CharField(max_length=150, null=True)
+        name = models.CharField(max_length=50, null=True)
+        contact = models.CharField(max_length=50, null=True)
+        email = models.EmailField(max_length=500, null=True)
+        description = models.TextField(blank=True)
+        created_at = models.DateTimeField(auto_now_add=True)
+        status = models.BooleanField(default=0)
+        is_matchup = models.BooleanField(default=0)
+        image_url = models.URLField(max_length=2000, null=True)
+        deleted = models.BooleanField(default=0)
 
-	class Meta:
-		db_table = 'resumes'
+        class Meta:
+            db_table = 'resumes'
 
 class Resume_file(models.Model):
 	user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
 	resume_file = models.FilePathField(path='/user/resumes')
-	
+
 	class Meta:
 		db_table = 'resume_files'
 
 class Career(models.Model):
 	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-	start = models.DateField(null=True)
-	end = models.DateField(null=True)
+	start = models.DateTimeField(null=True)
+	end = models.DateTimeField(null=True)
 	is_working = models.BooleanField(default=0)
 	company = models.CharField(max_length=100, null=True)
 	position = models.CharField(max_length=100, null=True)
-	
+
 	class Meta:
 		db_table = 'careers'
 
 class Result(models.Model):
-	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	start = models.DateField(null=True)
-	end = models.DateField(null=True)
-	title = models.CharField(max_length=300, null=True)
-	content = models.CharField(max_length=300, null=True)
+        career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+        start = mdoels.DateTimeField(null=True)
+        end = models.DateTimeField(null=True)
+        title = models.CharField(max_length=300, null=True)
+        content = models.CharField(max_length=300, null=True)
 
-	class Meta:
-		db_table = 'results'
+        class Meta:
+            db_table = 'results'
 
 class Education(models.Model):
-	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	start = models.DateField(null=True)
-	end = models.DateField(null=True)
+	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
+	start = models.DateTimeField(null=True)
+	end = models.DateTimeField(null=True)
 	is_working = models.BooleanField(default=0)
 	school = models.CharField(max_length=100, null=True)
 	specialism = models.CharField(max_length=100, null=True)
@@ -135,8 +140,8 @@ class Education(models.Model):
 		db_table = 'educations'
 
 class Award(models.Model):
-	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-	date = models.DateField(null=True)
+	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
+	date = models.DateTimeField(null=True)
 	name = models.CharField(max_length=100, null=True)
 	content = models.CharField(max_length=200, null=True)
 
@@ -144,7 +149,7 @@ class Award(models.Model):
 		db_table = 'awards'
 
 class Language(models.Model):
-	career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
+	resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
 	linguistic = models.ForeignKey('Linguistic', on_delete=models.SET_NULL, null=True)
 	level = models.ForeignKey('Level', on_delete=models.SET_NULL, null=True)
 
@@ -167,7 +172,7 @@ class Test(models.Model):
 	language = models.ForeignKey('Language', on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=300, null=True)
 	score = models.CharField(max_length=150, null=True)
-	date = models.DateField(null=True)
+	date = models.DateTimeField(null=True)
 
 	class Meta:
 		db_table = 'tests'

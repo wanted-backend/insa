@@ -12,7 +12,7 @@ print("BASE_DIR=", end=""), print(BASE_DIR)
 sys.path.append(BASE_DIR)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "insa.settings")
-django.setup()
+django.setup(	)
 
 from company.models import *
 from user.models import *
@@ -265,7 +265,7 @@ with open(CSV_PATH, newline='') as csvfile:
             responsibility = row['responsibility'],
             qualification = row['qualification'],
             preferred = preferred,
-            benifit = row['benifit'],
+            benefit = row['benefit'],
             created_at = row['created_at'],
             updated_at = row['updated_at'],
             referrer = row['referrer'],
