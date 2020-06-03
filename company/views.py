@@ -1,4 +1,6 @@
 import json
+import random
+import datetime
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
@@ -14,10 +16,8 @@ class CompanyRegister(View):
 	@login_decorator
 	def post(self, request):
 		data = json.loads(request.body)
-		print(data)
 		try:
 			user = request.user
-			print(user.id)
 			Company(
                 user_id = user.id,
                 name = data['name'],
@@ -78,7 +78,6 @@ class CompanyPosition(View):
 	def post(self, request):
 		data = json.loads(request.body)
 		try:
-			print(data)
 			user = request.user
 			company = Company.objects.get(user_id=user.id)
 			is_entry_min = 0 if data['entry']==True else data['min_level']
@@ -293,3 +292,90 @@ class PositionApplyView(View):
             user_id=request.user.id,
         )
         return HttpResponse(status=200)
+
+class ThemeTop(View):
+    
+    def get(self,request,theme_id):
+        
+        themes = Theme.objects.get(id=theme_id)
+        
+        themetop = {
+			"theme_title"             : themes.title,
+            "theme_description"       : themes.description,
+            "theme_inner_image"       : themes.inner_image_url,
+            "theme_inner_description" : themes.inner_description,
+		}
+        
+        return JsonResponse({"theme_top" : themetop},status=200)
+
+class ThemeList(View):
+    
+    def get(self,request,theme_id):
+        
+        offset = int(request.GET.get('offset'))
+        limit  = int(request.GET.get('limit'))
+        themes = Position.objects.filter(theme_id=theme_id)
+
+        themelist = [{
+            "item_id"       : position.id,
+            "item_image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
+			"item_title"    : position.name,
+            "item_company"  : position.company.name,
+            "item_location" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
+            "item_country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
+            "item_reward"   : position.total
+		} for position in themes[offset:offset + limit-1]]
+        
+        return JsonResponse({"theme_list":themelist},status=200)
+
+class HomeView(View):
+
+    @login_check
+    def get(self,request):
+        
+        user = request.user
+        roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
+        mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
+        themes = Theme.objects.prefetch_related('position_set').all()
+        
+        user_recomended_position = [{
+			"item_id"       : position.id,
+            "item_image"    : position.company.image_set.all().first().image_url,
+            "item_name"     : position.name,
+            "item_company"  : position.company.name,
+            "item_location" : position.position_workplace_set.get().workplace.city.name,
+            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "item_reward"   : position.total,
+		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+        
+        new_employment = [{
+			"item_id"       : position.id,
+            "item_image"    : position.company.image_set.all().first().image_url,
+            "item_name"     : position.name,
+            "itme_company"  : position.company.name,
+            "item_location" : position.position_workplace_set.get().workplace.city.name,
+            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "item_reward"   : position.total,
+		}for position in Position.objects.order_by('created_at')[:4]]
+        
+        theme_list = [{
+            "item_image"    : theme.image_url,
+            "item_title"    : theme.title,
+            "item_desc"     : theme.description,
+            "item_logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
+		}for theme in themes[:4]]
+        
+        recommendations_of_the_week = [{
+            "item_image"    : recommend.company.image_set.all().first().image_url,
+            "item_name"     : recommend.name,
+            "item_company"  : recommend.company.name,
+            "item_location" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
+            "item_country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
+            "item_reward"   : recommend.total,
+		}for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
+        
+        return JsonResponse({"position_recommend"  : user_recomended_position,
+                             "new_employment"      : new_employment,
+                             "theme_list"          : theme_list,
+                             "Recommendation_week" : recommendations_of_the_week
+                            },status=200)
