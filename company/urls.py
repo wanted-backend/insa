@@ -15,7 +15,7 @@ urlpatterns = [
     path('/position/<int:position_id>/bookmark', PositionBookmarkView.as_view()),
     path('/position/<int:position_id>/apply', PositionApplyView.as_view()),
     path('/unread', UnreadMatchup.as_view()),
-    path('/theme', ThemeTop.as_view()),
-    path('/theme/list', ThemeList.as_view()),
+    path('/themetop/<int:theme_id>', ThemeTop.as_view()),
+    path('/themelist/<int:theme_id>', ThemeList.as_view()),
     path('/home', HomeView.as_view()),
 ]

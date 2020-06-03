@@ -9,7 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from utils                  import login_decorator, login_check
 from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
-                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like
+                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like , Theme
 from user.models            import User, Matchup, Work_information, Matchup_skill
 
 class CompanyRegister(View):
@@ -378,4 +378,4 @@ class HomeView(View):
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
                              "Recommendation_week" : Recommendations_of_the_week
-                             },status=200)
+                            },status=200)
