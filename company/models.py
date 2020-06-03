@@ -176,7 +176,7 @@ class Position_item(models.Model):
     expiration = models.ForeignKey('Expiration', on_delete=models.SET_NULL, null=True)
     period = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    used_at = models.DateTimeField(null=True)
+    used_at = models.DateTimeField(auto_now_add=False, null=True)
     image_url = models.URLField(max_length=2000)
     title = models.CharField(max_length=50)
     description = models.CharField(max_length=100)

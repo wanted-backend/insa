@@ -34,6 +34,7 @@ class Matchup_career(models.Model):
         db_table = 'matchup_careers'
 
 class Matchup(models.Model):
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
     role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True)
     matchup_career = models.ForeignKey('Matchup_career', on_delete=models.SET_NULL, null=True)
