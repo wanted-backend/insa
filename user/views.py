@@ -9,9 +9,20 @@ from django.views       import View
 from partial_date       import PartialDateField
 
 from utils              import login_decorator
-from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file
+from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want
 
 from insa.settings      import SECRET_KEY
+from utils              import login_decorator
+
+class UserEmailExists(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'MESSAGE':'True'}, status=200)
+            return JsonResponse({'MESSAGE':'False'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
 class UserRegisterView(View):
     validation = {
@@ -60,7 +71,7 @@ class AdminRegisterView(View):
 
             User.objects.create(
                 name = data['name'],
-                position = data['position'],
+                job_position = data['job_position'],
                 contact = data['contact'],
                 email = data['email'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
@@ -79,8 +90,6 @@ class LogInView(View):
 
             if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
                 token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
-                print('로그인 유저는 ',user.id)
-
 
                 Security.objects.create(
                     user_id = user.id,
@@ -261,20 +270,15 @@ class ResumeDetailWriteView(View):
 
         return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class LikedCompanies(View):
+    @login_decorator
+    def get(self, request):
+        companies = Want.objects.filter(user_id=request.user.id)
+        data = [
+            {
+                'name':want.company.name,
+                'logo':want.company.image_url,
+                'date':want.created_at
+            } for want in companies
+        ]
+        return JsonResponse({'companies':data}, status=200)

@@ -159,6 +159,7 @@ with open(CSV_PATH, newline='') as csvfile:
 
         Workplace.objects.create(
             company = Company.objects.get(id=row['companies_id']),
+            country = Country.objects.get(id=row['countries_id']),
             city = cities_id,
             address = row['address'],
             lat = row['lat'],
