@@ -11,7 +11,7 @@ from django.utils           import timezone
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup, Work_information, Matchup_skill, Want
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, 
-                                    Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like)
+                                    Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like , Theme)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -319,13 +319,13 @@ class ThemeList(View):
         themes = Position.objects.filter(theme_id=theme_id)
 
         themelist = [{
-            "item_id"       : position.id,
-            "item_image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
-			"item_title"    : position.name,
-            "item_company"  : position.company.name,
-            "item_location" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
-            "item_country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
-            "item_reward"   : position.total
+            "id"       : position.id,
+            "image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
+			"name"    : position.name,
+            "company"  : position.company.name,
+            "city" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
+            "country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
+            "reward"   : position.total
 		} for position in themes[offset:offset + limit-1]]
 
         return JsonResponse({"theme_list":themelist},status=200)
@@ -341,45 +341,46 @@ class HomeView(View):
         themes = Theme.objects.prefetch_related('position_set').all()
 
         user_recomended_position = [{
-			"item_id"       : position.id,
-            "item_image"    : position.company.image_set.all().first().image_url,
-            "item_name"     : position.name,
-            "item_company"  : position.company.name,
-            "item_location" : position.position_workplace_set.get().workplace.city.name,
-            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "item_reward"   : position.total,
+			"id"       : position.id,
+            "image"    : position.company.image_set.all().first().image_url,
+            "name"     : position.name,
+            "company"  : position.company.name,
+            "city" : position.position_workplace_set.get().workplace.city.name,
+            "country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "reward"   : position.total,
 		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
 
         new_employment = [{
-			"item_id"       : position.id,
-            "item_image"    : position.company.image_set.all().first().image_url,
-            "item_name"     : position.name,
-            "itme_company"  : position.company.name,
-            "item_location" : position.position_workplace_set.get().workplace.city.name,
-            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "item_reward"   : position.total,
+			"id"       : position.id,
+            "image"    : position.company.image_set.all().first().image_url,
+            "name"     : position.name,
+            "company"  : position.company.name,
+            "city" : position.position_workplace_set.get().workplace.city.name,
+            "country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "reward"   : position.total,
 		}for position in Position.objects.order_by('created_at')[:4]]
 
         theme_list = [{
-            "item_image"    : theme.image_url,
-            "item_title"    : theme.title,
-            "item_desc"     : theme.description,
-            "item_logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
+            "image"    : theme.image_url,
+            "title"    : theme.title,
+            "desc"     : theme.description,
+            "logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
 		}for theme in themes[:4]]
 
         recommendations_of_the_week = [{
-            "item_image"    : recommend.company.image_set.all().first().image_url,
-            "item_name"     : recommend.name,
-            "item_company"  : recommend.company.name,
-            "item_location" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
-            "item_country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
-            "item_reward"   : recommend.total,
+            "image"    : recommend.company.image_set.all().first().image_url,
+            "name"     : recommend.name,
+            "company"  : recommend.company.name,
+            "city" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
+            "country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
+            "reward"   : recommend.total,
 		}for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
         return JsonResponse({"position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
-                             "Recommendation_week" : recommendations_of_the_week
+                             "Recommendation_week" : recommendations_of_the_week,
+                            },status=200)
 
 
 class PositionAdvertisement(View):
@@ -388,12 +389,12 @@ class PositionAdvertisement(View):
         advertisement=[{
             'id':position.position.id,
             'image':position.position.company.image_set.all().first().image_url,
-            'company_logo':position.position.company.image_url
+            'company_logo':position.position.company.image_url,
             'name':position.position.name,
             'company':position.position.company.name,
             'location': position.position.position_workplace_set.get().workplace.city.name if position.position.position_workplace_set.get().workplace.city,
-            'country':position.position.position_workplace_set.get().workplace.country.name
-            'reward':position.position.total
+            'country':position.position.position_workplace_set.get().workplace.country.name,
+            'reward':position.position.total,
         }for position in Position_item.objects.select_related('position').filter(Q(start_date__lt=timezone.now()) & Q(end_date__gt=timezone.now()) & Q(item_id=1))]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
