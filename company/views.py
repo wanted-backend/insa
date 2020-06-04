@@ -320,11 +320,11 @@ class ThemeList(View):
 
         themelist = [{
             "id"       : position.id,
-            "image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
-			"name"    : position.name,
+            "image"    : position.company.image_set.all().first().image_url,
+			"name"     : position.name,
             "company"  : position.company.name,
-            "city" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
-            "country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
+            "city"     : position.position_workplace_set.get().workplace.city.name,
+            "country"  : position.position_workplace_set.get().workplace.city.country.name,
             "reward"   : position.total
 		} for position in themes[offset:offset + limit-1]]
 
@@ -341,21 +341,21 @@ class HomeView(View):
         themes = Theme.objects.prefetch_related('position_set').all()
 
         user_recomended_position = [{
-			"id"       : position.id,
+            "id"       : position.id,
             "image"    : position.company.image_set.all().first().image_url,
             "name"     : position.name,
             "company"  : position.company.name,
-            "city" : position.position_workplace_set.get().workplace.city.name,
+            "city"     : position.position_workplace_set.get().workplace.city.name,
             "country"  : position.position_workplace_set.get().workplace.city.country.name,
             "reward"   : position.total,
 		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
 
         new_employment = [{
-			"id"       : position.id,
+            "id"       : position.id,
             "image"    : position.company.image_set.all().first().image_url,
             "name"     : position.name,
             "company"  : position.company.name,
-            "city" : position.position_workplace_set.get().workplace.city.name,
+            "city"     : position.position_workplace_set.get().workplace.city.name,
             "country"  : position.position_workplace_set.get().workplace.city.country.name,
             "reward"   : position.total,
 		}for position in Position.objects.order_by('created_at')[:4]]
@@ -392,15 +392,28 @@ class PositionAdvertisement(View):
             'company_logo':position.position.company.image_url,
             'name':position.position.name,
             'company':position.position.company.name,
-            'location': position.position.position_workplace_set.get().workplace.city.name if position.position.position_workplace_set.get().workplace.city else None,
+            'city': position.position.position_workplace_set.get().workplace.city.name if position.position.position_workplace_set.get().workplace.city else None,
             'country':position.position.position_workplace_set.get().workplace.country.name,
             'reward':position.position.total,
         }for position in Position_item.objects.select_related('position').filter(Q(start_date__lt=timezone.now()) & Q(end_date__gt=timezone.now()) & Q(item_id=1))]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
         
-class NetworkAd(View):
+class JobAd(View):
     
-    def post(self,requst):
+    @login_check
+    def get(self,request):
+
+        user = request.user
+        company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
+        # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
+        positions = [{
+            "id"      : position.id,
+            "name"    : position.name,
+            "image"   : position.company.image_set.all().first().image_url,
+            "city"    : position.position_workplace_set.get().workplace.city.name if position.position_workplace_set.get().workplace.city else None,
+            "country" : position.position_workplace_set.get().workplace.country.name,
+            "reward"  : position.total
+        }for position in company_positions]
         
-        
+        return JsonResponse({"positions" : positions},status=200)
