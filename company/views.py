@@ -392,15 +392,15 @@ class PositionAdvertisement(View):
             'company_logo':position.position.company.image_url,
             'name':position.position.name,
             'company':position.position.company.name,
-            'location': position.position.position_workplace_set.get().workplace.city.name if position.position.position_workplace_set.get().workplace.city,
+            'location': position.position.position_workplace_set.get().workplace.city.name if position.position.position_workplace_set.get().workplace.city else None,
             'country':position.position.position_workplace_set.get().workplace.country.name,
             'reward':position.position.total,
         }for position in Position_item.objects.select_related('position').filter(Q(start_date__lt=timezone.now()) & Q(end_date__gt=timezone.now()) & Q(item_id=1))]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
         
-
-
-
+class NetworkAd(View):
+    
+    def post(self,requst):
         
         
