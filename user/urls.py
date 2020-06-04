@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, LogInView, LikedCompanies, ResumeView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView
+from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, \
+         LogInView, LikedCompanies, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView
 
 urlpatterns = [
 	path('/exists', UserEmailExists.as_view()),
