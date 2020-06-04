@@ -79,7 +79,7 @@ class AdminRegisterView(View):
 
             User.objects.create(
 				name = data['name'],
-				position = data['position'],
+				job_position = data['job_position'],
 				contact = data['contact'],
 				email = data['email'],
 				password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
