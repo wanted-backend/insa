@@ -349,7 +349,7 @@ class HomeView(View):
             "city"     : position.position_workplace_set.get().workplace.city.name,
             "country"  : position.position_workplace_set.get().workplace.city.country.name,
             "reward"   : position.total,
-		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+        }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
 
         new_employment = [{
             "id"       : position.id,
@@ -359,23 +359,23 @@ class HomeView(View):
             "city"     : position.position_workplace_set.get().workplace.city.name,
             "country"  : position.position_workplace_set.get().workplace.city.country.name,
             "reward"   : position.total,
-		}for position in Position.objects.order_by('created_at')[:4]]
+        }for position in Position.objects.order_by('created_at')[:4]]
 
         theme_list = [{
             "image"    : theme.image_url,
             "title"    : theme.title,
             "desc"     : theme.description,
             "logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
-		}for theme in themes[:4]]
+        }for theme in themes[:4]]
 
         recommendations_of_the_week = [{
             "image"    : recommend.company.image_set.all().first().image_url,
             "name"     : recommend.name,
             "company"  : recommend.company.name,
-            "city" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
+            "city"     : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
             "country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
             "reward"   : recommend.total,
-		}for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
+        }for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
         return JsonResponse({"position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
