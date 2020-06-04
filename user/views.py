@@ -7,12 +7,12 @@ import time
 from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
+from datetime           import datetime
 
 from utils              import login_decorator
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want
 
 from insa.settings      import SECRET_KEY
-from utils              import login_decorator
 
 class UserEmailExists(View):
     def post(self, request):
@@ -88,17 +88,17 @@ class LogInView(View):
             if User.objects.filter(email=data['email']).exists():
                 user = User.objects.get(email=data['email'])
 
-            if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
-                token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
+                if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
+                    token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
 
-                Security.objects.create(
-                    user_id = user.id,
-                    user_ip = request.META['REMOTE_ADDR'],
-                    browser = request.META['HTTP_USER_AGENT'],
-                    date = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
-                )
-                return JsonResponse({'token': token.decode('utf-8')}, status=200)
-            return HttpResponse(status=401)
+                    Security.objects.create(
+                        user_id = user.id,
+                        user_ip = request.META['REMOTE_ADDR'],
+                        browser = request.META['HTTP_USER_AGENT'],
+                        date = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
+                    )
+                    return JsonResponse({'token': token.decode('utf-8')}, status=200)
+                return JsonResponse({'MESSAGE':'INVALID'}, status=401)
 
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
