@@ -78,11 +78,11 @@ class AdminRegisterView(View):
                     return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
 
             User.objects.create(
-				name = data['name'],
-				position = data['position'],
-				contact = data['contact'],
-				email = data['email'],
-				password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
+                name = data['name'],
+                job_position = data['job_position'],
+                contact = data['contact'],
+                email = data['email'],
+                password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
 			)
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
