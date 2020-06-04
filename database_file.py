@@ -72,11 +72,14 @@ with open(CSV_PATH, newline='') as csvfile:
     data_reader = csv.DictReader(csvfile)
 
     for row in data_reader:
+        exchange_rate = None if row['exchange_rate'] == '' else row['exchange_rate']
         Country.objects.create(
             name = row['name'],
             number = row['number'],
             currency = row['currency'],
-            english_currency = row['english_currency']
+            english_currency = row['english_currency'],
+            exchange_rate = exchange_rate,
+            tenthousand_unit = row['tenthousand_unit']
         )
         print(row)
 
