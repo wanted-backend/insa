@@ -12,7 +12,7 @@ print("BASE_DIR=", end=""), print(BASE_DIR)
 sys.path.append(BASE_DIR)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "insa.settings")
-django.setup(	)
+django.setup()
 
 from company.models import *
 from user.models import *
