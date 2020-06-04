@@ -10,10 +10,10 @@ from partial_date       import PartialDateField
 from datetime           import datetime
 
 from utils              import login_decorator
-from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want
-
-from .models            import User, Security, Want
 from insa.settings      import SECRET_KEY
+from company.models     import Company, Company_matchup
+from .models            import User, Security, Resume, Career, Result, Education, Award, Language,\
+                                Test, Link, Level, Linguistic, Resume_file, Want, Matchup
 
 class UserEmailExists(View):
     def post(self, request):
@@ -28,12 +28,13 @@ class UserEmailExists(View):
 
 class UserRegisterView(View):
     validation = {
-		'password': lambda password: re.match('\w{6,15}', password)
+		'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
 	}
 
     def post(self, request):
         try:
             data = json.loads(request.body)
+            print(data)
             
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
@@ -43,7 +44,7 @@ class UserRegisterView(View):
                 if value == '':
                     return JsonResponse({'MESSAGE':'입력 정보를 확인해주세요'}, status=401)
 
-			# 비밀번호 숫자, 영문 조합으로 6자리 이상인지 검증(특수문자는 선택)
+			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
                     return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
@@ -60,7 +61,7 @@ class UserRegisterView(View):
 
 class AdminRegisterView(View):
     validation = {
-        'password': lambda password: re.match('\w{6,15}', password)
+        'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
     }
 
     def post(self, request):
@@ -75,7 +76,7 @@ class AdminRegisterView(View):
                 if value == '':
                     return JsonResponse({'MESSAGE':'입력 정보를 확인해주세요'}, status=401)
 
-			# 비밀번호 숫자, 영문 조합으로 6자리 이상인지 검증(특수문자는 선택)
+			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
                     return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
@@ -279,7 +280,7 @@ class ResumeDetailWriteView(View):
 
         return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
 
-class LikedCompanies(View):
+class CompanyLikedResumes(View):
     @login_decorator
     def get(self, request):
         companies = Want.objects.filter(user_id=request.user.id)
@@ -291,3 +292,17 @@ class LikedCompanies(View):
             } for want in companies
         ]
         return JsonResponse({'companies':data}, status=200)
+
+class CompanyRequestsResume(View):
+    @login_decorator
+    def get(self, request):
+        matchup = Matchup.objects.get(user_id=request.user.id)
+        requests_resume = Company_matchup.objects.filter(matchup_id=matchup.id)
+        data = [
+            {
+                'name':request.company.name,
+                'logo':request.company.image_url,
+                'date':request.created_at
+            } for request in requests_resume
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)

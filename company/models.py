@@ -96,9 +96,9 @@ class Workplace(models.Model):
 class Country(models.Model):
 
     name = models.CharField(max_length=100)
-    number = models.CharField(max_length=30, null=True)
-    currency = models.CharField(max_length=10, null=True)
-    english_currency = models.CharField(max_length=10, null=True)
+    number = models.CharField(max_length=30)
+    currency = models.CharField(max_length=10)
+    english_currency = models.CharField(max_length=10)
     exchange_rate = models.FloatField(null=True)
     tenthousand_unit = models.CharField(max_length=10, null=True)
 

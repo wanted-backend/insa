@@ -382,6 +382,51 @@ class HomeView(View):
                              "Recommendation_week" : recommendations_of_the_week,
                             },status=200)
 
+class RequestResume(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'matchup_id' in data:
+                matchup_id = data['matchup_id']
+                matchup = Matchup.objects.get(id=matchup_id)
+                company = Company.objects.get(user_id=request.user.id)
+                if matchup.resume.is_matchup == True:
+                    if Company_matchup.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
+                        return JsonResponse({'MESSAGE':'이미 요청됨'}, status=401)
+                    Company_matchup.objects.create(
+                        company_id=company.id,
+                        matchup_id=matchup_id,
+                        status = True
+                    )
+                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+                return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class RequestMatchupList(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            requests = Company_matchup.objects.filter(company_id=company.id, status=True)
+            for request in requests:
+                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=request.matchup.user.id)
+                data = [
+                    {
+                        'id':request.id,
+                        'name':request.matchup.user.name,
+                        'description':request.matchup.description,
+                        'role':request.matchup.role.name,
+                        'career':request.matchup.matchup_career.year,
+                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
+                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+                        'education':request.matchup.school,
+                    }
+                ]
+                return JsonResponse({'is_resume_request':data}, status=200)
+        except ValueError:
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
 class PositionAdvertisement(View):
     def get(self, request):
@@ -398,9 +443,3 @@ class PositionAdvertisement(View):
         }for position in Position_item.objects.select_related('position').filter(Q(start_date__lt=timezone.now()) & Q(end_date__gt=timezone.now()) & Q(item_id=1))]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
-        
-class NetworkAd(View):
-    
-    def post(self,requst):
-        
-        

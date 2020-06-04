@@ -2,7 +2,8 @@ from django.urls import path
 
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
-         UnreadMatchup , ThemeTop , ThemeList , HomeView
+         UnreadMatchup , ThemeTop , ThemeList , HomeView, RequestResume, \
+         RequestMatchupList
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -10,8 +11,10 @@ urlpatterns = [
     path('/positions', PositionList.as_view()),
     path('/position/<int:position_id>', DetailView.as_view()),
     path('/bookmark/<int:position_id>', PositionBookmarkView.as_view()),
-    path('/like', LikedMatchupResume.as_view()),
+    path('/like/matchup', LikedMatchupResume.as_view()),
     path('/liked/matchup', LikedMatchupList.as_view()),
+    path('/request/matchup', RequestResume.as_view()),
+    path('/requests/matchup', RequestMatchupList.as_view()),
     path('/position/<int:position_id>/bookmark', PositionBookmarkView.as_view()),
     path('/position/<int:position_id>/apply', PositionApplyView.as_view()),
     path('/unread', UnreadMatchup.as_view()),
