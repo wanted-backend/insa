@@ -2,8 +2,8 @@ from django.urls import path
 
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
-         UnreadMatchup , ThemeTop , ThemeList , HomeView, RequestResume, \
-         RequestMatchupList
+         MatchupList , ThemeTop , ThemeList , HomeView, RequestResume, \
+         RequestMatchupList, ReadingMatchup
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -17,8 +17,9 @@ urlpatterns = [
     path('/requests/matchup', RequestMatchupList.as_view()),
     path('/position/<int:position_id>/bookmark', PositionBookmarkView.as_view()),
     path('/position/<int:position_id>/apply', PositionApplyView.as_view()),
-    path('/unread', UnreadMatchup.as_view()),
+    path('/matchup/list', MatchupList.as_view()),
     path('/themetop/<int:theme_id>', ThemeTop.as_view()),
     path('/themelist/<int:theme_id>', ThemeList.as_view()),
     path('/home', HomeView.as_view()),
+    path('/read/matchup', ReadingMatchup.as_view()),
 ]
