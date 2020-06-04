@@ -97,7 +97,6 @@ class Country(models.Model):
 
     name = models.CharField(max_length=100)
     number = models.CharField(max_length=30)
-    code = models.CharField(max_length=20)
     currency = models.CharField(max_length=10)
     english_currency = models.CharField(max_length=10)
 
