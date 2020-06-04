@@ -28,12 +28,13 @@ class UserEmailExists(View):
 
 class UserRegisterView(View):
     validation = {
-		'password': lambda password: re.match('\w{6,15}', password)
+		'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
 	}
 
     def post(self, request):
         try:
             data = json.loads(request.body)
+            print(data)
             
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
@@ -60,7 +61,7 @@ class UserRegisterView(View):
 
 class AdminRegisterView(View):
     validation = {
-        'password': lambda password: re.match('\w{6,15}', password)
+        'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
     }
 
     def post(self, request):
