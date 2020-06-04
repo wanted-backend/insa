@@ -465,3 +465,25 @@ class ReadingMatchup(View):
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class ReadingMatchupList(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            reading = Reading.objects.prefetch_related('matchup').filter(company_id=company.id)
+            data = [
+                {
+                    'id':read.id,
+                    'name':read.matchup.user.name,
+                    'description':read.matchup.description,
+                    'role':read.matchup.role.name,
+                    'career':read.matchup.matchup_career.year,
+                    'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=read.matchup.id)],
+                    'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=read.matchup.id)],
+                    'education':read.matchup.school,
+                } for read in reading
+            ]
+            return JsonResponse({'reading_matchup':data}, status=200)
+        except ValueError:
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)

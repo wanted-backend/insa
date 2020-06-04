@@ -3,7 +3,7 @@ from django.urls import path
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
          MatchupList , ThemeTop , ThemeList , HomeView, RequestResume, \
-         RequestMatchupList, ReadingMatchup
+         RequestMatchupList, ReadingMatchup, ReadingMatchupList
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -22,4 +22,5 @@ urlpatterns = [
     path('/themelist/<int:theme_id>', ThemeList.as_view()),
     path('/home', HomeView.as_view()),
     path('/read/matchup', ReadingMatchup.as_view()),
+    path('/reading', ReadingMatchupList.as_view()),
 ]
