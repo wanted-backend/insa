@@ -303,11 +303,11 @@ class ThemeTop(View):
         themes = Theme.objects.get(id=theme_id)
 
         themetop = {
-			"theme_title"             : themes.title,
+            "theme_title"             : themes.title,
             "theme_description"       : themes.description,
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
-		}
+        }
 
         return JsonResponse({"theme_top" : themetop},status=200)
 
@@ -322,7 +322,7 @@ class ThemeList(View):
         themelist = [{
             "id"       : position.id,
             "image"    : position.company.image_set.all().first().image_url,
-			"name"     : position.name,
+            "name"     : position.name,
             "company"  : position.company.name,
             "city"     : position.position_workplace_set.get().workplace.city.name,
             "country"  : position.position_workplace_set.get().workplace.city.country.name,
@@ -333,23 +333,23 @@ class ThemeList(View):
 
 class HomeView(View):
 
-    @login_check
+    # @login_check
     def get(self,request):
 
-        user = request.user
-        roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
-        mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
+        # user = request.user
+        # roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
+        # mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
 
-        user_recomended_position = [{
-            "id"       : position.id,
-            "image"    : position.company.image_set.all().first().image_url,
-            "name"     : position.name,
-            "company"  : position.company.name,
-            "city"     : position.position_workplace_set.get().workplace.city.name,
-            "country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "reward"   : position.total,
-        }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+        # user_recomended_position = [{
+        #     "id"       : position.id,
+        #     "image"    : position.company.image_set.all().first().image_url,
+        #     "name"     : position.name,
+        #     "company"  : position.company.name,
+        #     "city"     : position.position_workplace_set.get().workplace.city.name,
+        #     "country"  : position.position_workplace_set.get().workplace.city.country.name,
+        #     "reward"   : position.total,
+        # }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
 
         new_employment = [{
             "id"       : position.id,
@@ -377,7 +377,7 @@ class HomeView(View):
             "reward"   : recommend.total,
         }for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
-        return JsonResponse({"position_recommend"  : user_recomended_position,
+        return JsonResponse({"position_recommend"  : None,#user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
                              "Recommendation_week" : recommendations_of_the_week,
