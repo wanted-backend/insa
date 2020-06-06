@@ -4,6 +4,7 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
          JobAd , MatchupList , ThemeTop , ThemeList , HomeView, RequestResume, \
          RequestMatchupList, ReadingMatchup, ReadingMatchupList, ProposalView
+         UnreadMatchup , ThemeTop , ThemeList , HomeView, PositionMain
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -25,4 +26,5 @@ urlpatterns = [
     path('/read/matchup', ReadingMatchup.as_view()),
     path('/reading', ReadingMatchupList.as_view()),
     path('/proposal', ProposalView.as_view())
+    path('/position', PositionMain.as_view()),
 ]

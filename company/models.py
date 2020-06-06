@@ -141,6 +141,8 @@ class Position(models.Model):
     position_workplaces = models.ManyToManyField('Workplace', through='Position_workplace', related_name='position_workplaces')
     position_volunteers = models.ManyToManyField('user.User', through='Volunteers', related_name='position_volunteers')
     bookmarks = models.ManyToManyField('user.User', through='Bookmark')
+    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
+    city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
 
     class Meta:
         db_table = 'positions'
@@ -218,7 +220,7 @@ class Network(models.Model):
 class Volunteers(models.Model):
 
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
-    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True, related_name='volunteers')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=1)
 
