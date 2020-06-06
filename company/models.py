@@ -300,6 +300,7 @@ class Proposal(models.Model):
     end = models.IntegerField(default=0)
     place = models.CharField(max_length=200)
     stock = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'proposals'

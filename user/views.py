@@ -11,7 +11,7 @@ from datetime           import datetime
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Company, Company_matchup
+from company.models     import Company, Company_matchup, Proposal
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language,\
                                 Test, Link, Level, Linguistic, Resume_file, Want, Matchup
 
@@ -304,5 +304,19 @@ class CompanyRequestsResume(View):
                 'logo':request.company.image_url,
                 'date':request.created_at
             } for request in requests_resume
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)
+
+class CompanyInterviewResume(View):
+    @login_decorator
+    def get(self, request):
+        matchup = Matchup.objects.get(user_id=request.user.id)
+        interviews = Proposal.objects.filter(matchup_id=matchup.id)
+        data = [
+            {
+                'name':interview.company.name,
+                'logo':interview.company.image_url,
+                'date':interview.created_at
+            } for interview in interviews
         ]
         return JsonResponse({'is_resume_request':data}, status=200)

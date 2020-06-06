@@ -527,3 +527,20 @@ class ProposalView(View):
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+    @login_decorator
+    def get(self, request):
+        interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
+        data = [
+            {
+                'id':interview.id,
+                'name':interview.matchup.user.name,
+                'description':interview.matchup.description,
+                'role':interview.matchup.role.name,
+                'career':interview.matchup.matchup_career.year,
+                'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=interview.matchup.id)],
+                'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=interview.matchup.id)],
+                'education':interview.matchup.school
+            } for interview in interviews
+        ]
+        return JsonResponse({'interview_proposal':data}, status=200)
