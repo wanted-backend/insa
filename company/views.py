@@ -12,7 +12,7 @@ from utils                  import login_decorator, login_check
 from user.models            import User, Matchup, Work_information, Matchup_skill, Want
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup, 
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme, 
-                                    Reading)
+                                    Reading, Proposal)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -506,3 +506,24 @@ class ReadingMatchupList(View):
             return JsonResponse({'reading_matchup':data}, status=200)
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+
+class ProposalView(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            Proposal.objects.create(
+                company_id = Company.objects.get(user_id=request.user.id).id,
+                matchup_id = Matchup.objects.get(id=data['matchup_id']).id,
+                position_id = Position.objects.get(id=data['position_id']).id,
+                content = data['content'],
+                title = data['title'],
+                start = data['start'],
+                end = data['end'],
+                place = data['place'],
+                stock = data['stock']
+            )
+
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)

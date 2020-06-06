@@ -3,7 +3,7 @@ from django.urls import path
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
          JobAd , MatchupList , ThemeTop , ThemeList , HomeView, RequestResume, \
-         RequestMatchupList, ReadingMatchup, ReadingMatchupList
+         RequestMatchupList, ReadingMatchup, ReadingMatchupList, ProposalView
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -24,4 +24,5 @@ urlpatterns = [
     path('/job-ad', JobAd.as_view()),
     path('/read/matchup', ReadingMatchup.as_view()),
     path('/reading', ReadingMatchupList.as_view()),
+    path('/proposal', ProposalView.as_view())
 ]

@@ -265,7 +265,6 @@ class Reading(models.Model):
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
     matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
     read = models.BooleanField(default=0)
-    interview = models.BooleanField(default=0)
 
     class Meta:
         db_table = 'readings'
@@ -290,3 +289,17 @@ class Company_matchup_item(models.Model):
 
     class Meta:
         db_table = 'companies_matchup_items'
+
+class Proposal(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
+    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
+    content = models.TextField()
+    title = models.CharField(max_length=100)
+    start = models.IntegerField(default=0)
+    end = models.IntegerField(default=0)
+    place = models.CharField(max_length=200)
+    stock = models.CharField(max_length=100)
+    
+    class Meta:
+        db_table = 'proposals'
