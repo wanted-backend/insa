@@ -3,15 +3,14 @@ from django.urls import path
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
          JobAd , MatchupList , ThemeTop , ThemeList , HomeView, RequestResume, \
-         RequestMatchupList, ReadingMatchup, ReadingMatchupList, ProposalView
-         UnreadMatchup , ThemeTop , ThemeList , HomeView, PositionMain
+         RequestMatchupList, ReadingMatchup, ReadingMatchupList, ProposalView, \
+         PositionAdvertisement, PositionMain
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
     path('/positions/create', CompanyPosition.as_view()),
     path('/positions', PositionList.as_view()),
     path('/position/<int:position_id>', DetailView.as_view()),
-    path('/bookmark/<int:position_id>', PositionBookmarkView.as_view()),
     path('/like/matchup', LikedMatchupResume.as_view()),
     path('/liked/matchup', LikedMatchupList.as_view()),
     path('/request/matchup', RequestResume.as_view()),
@@ -25,6 +24,7 @@ urlpatterns = [
     path('/job-ad', JobAd.as_view()),
     path('/read/matchup', ReadingMatchup.as_view()),
     path('/reading', ReadingMatchupList.as_view()),
-    path('/proposal', ProposalView.as_view())
-    path('/position', PositionMain.as_view()),
+    path('/proposal', ProposalView.as_view()),
+    path('/position/main', PositionMain.as_view()),
+    path('/position/advertisement', PositionAdvertisement.as_view()),
 ]
