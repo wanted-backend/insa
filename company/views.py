@@ -146,7 +146,7 @@ class LikedMatchupResume(View):
                     status = True
                 )
                 Want.objects.create(
-                    user_id=matchup.user.id,
+                    user_id=matchup.resume.user.id,
                     company_id=company.id
                 )
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
@@ -161,16 +161,15 @@ class LikedMatchupList(View):
             company = Company.objects.get(user_id=user.id)
             likes = Like.objects.filter(company_id=company.id, status=True)
             for like in likes:
-                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=like.matchup.user.id)
                 data = [
                     {
-                        'id':like.user.id,
-                        'name':like.matchup.user.name,
+                        'id':like.matchup.resume.user.id,
+                        'name':like.matchup.resume.user.name,
                         'description':like.matchup.description,
                         'role':like.matchup.role.name,
                         'career':like.matchup.matchup_career.year,
-                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
-                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+                        'skills':list(Matchup_skill.objects.filter(matchup_id=like.matchup.id).values('id', 'skill')),
+                        'work_info':list(Work_information.objects.filter(matchup_id=like.matchup.id).values('id', 'name', 'start', 'end', 'is_working')),
                         'education':like.matchup.school,
                     }
                 ]
