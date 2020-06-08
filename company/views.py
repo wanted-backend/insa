@@ -339,9 +339,9 @@ class ThemeList(View):
             "image"    : position.company.image_set.all().first().image_url,
             "name"     : position.name,
             "company"  : position.company.name,
-            "city"     : position.position_workplace_set.get().workplace.city.name,
-            "country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "reward"   : position.total
+            "city"     : position.city.name if position.city else None,
+            "country"  : position.city.country.name if position.city else None,
+            "total_reward"   : position.total
 		} for position in themes[offset:offset + limit-1]]
 
         return JsonResponse({"theme_list":themelist},status=200)
@@ -355,7 +355,7 @@ class HomeView(View):
         # roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
         # mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
-
+        positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
         # user_recomended_position = [{
         #     "id"       : position.id,
         #     "image"    : position.company.image_set.all().first().image_url,
@@ -368,15 +368,16 @@ class HomeView(View):
 
         new_employment = [{
             "id"       : position.id,
-            "image"    : position.company.image_set.all().first().image_url,
+            "image"    : position.company.image_set.first().image_url,
             "name"     : position.name,
             "company"  : position.company.name,
-            "city"     : position.position_workplace_set.get().workplace.city.name,
-            "country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "reward"   : position.total,
-        }for position in Position.objects.order_by('created_at')[:4]]
+            "city"     : position.city.name,
+            "country"  : position.city.country.name,
+            "total_reward"   : position.total,
+        }for position in positions.order_by('created_at')[:4]]
 
         theme_list = [{
+            "id"       : theme.id,
             "image"    : theme.image_url,
             "title"    : theme.title,
             "desc"     : theme.description,
@@ -384,13 +385,14 @@ class HomeView(View):
         }for theme in themes[:4]]
 
         recommendations_of_the_week = [{
-            "image"    : recommend.company.image_set.all().first().image_url,
+            "id"       : recommend.id,
+            "image"    : recommend.company.image_set.first().image_url,
             "name"     : recommend.name,
             "company"  : recommend.company.name,
-            "city"     : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
-            "country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
-            "reward"   : recommend.total,
-        }for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
+            "city"     : recommend.city.name if recommend.city else None,
+            "country"  : recommend.city.country.name if recommend.city else None,
+            "total_reward"   : recommend.total,
+        }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
         return JsonResponse({"position_recommend"  : None,#user_recomended_position,
                              "new_employment"      : new_employment,
@@ -538,21 +540,26 @@ class JobAd(View):
     
     @login_check
     def get(self,request):
-
-        user = request.user
-        company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
-        # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
-        positions = [{
-            "id"      : position.id,
-            "name"    : position.name,
-            "image"   : position.company.image_set.all().first().image_url,
-            "city"    : position.position_workplace_set.get().workplace.city.name if position.position_workplace_set.get().workplace.city else None,
-            "country" : position.position_workplace_set.get().workplace.country.name,
-            "reward"  : position.total
-        }for position in company_positions]
         
+        try:
+            user = request.user
+            company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
+            # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
+            positions = [{
+                "id"      : position.id,
+                "name"    : position.name,
+                "image"   : position.company.image_set.all().first().image_url,
+                "city"    : position.city.name if position.city else None,
+                "country" : position.country.name if postion.city else None,
+                "total_reward"  : position.total
+            }for position in company_positions]
+        except:
+            return JsonResponse({"message":None},status=200)
         return JsonResponse({"positions" : positions},status=200)
-
+    
+    # def post(self,request):
+        
+        
 class ReadingMatchup(View):
     @login_decorator
     def post(self, request):
