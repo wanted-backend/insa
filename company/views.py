@@ -10,8 +10,8 @@ from django.utils           import timezone
 
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup, Work_information, Matchup_skill, Want
-from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup, 
-                                    Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme, 
+from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
+                                    Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
                                     Reading, Proposal)
 
 class CompanyRegister(View):
@@ -203,12 +203,12 @@ def get_reward_currency(position_id):
 
             if position.country.id==4 or position.country.id==3 or position.country.id==6:
                 total_reward=reward+currency
-                
+
                 return total_reward
-            
+
             else:
                 total_reward=currency+reward
-                
+
                 return total_reward
 
 class DetailView(View):
@@ -277,7 +277,7 @@ class PositionBookmarkView(View):
             if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
                 Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
                 return HttpResponse(status=200)
-            
+
             Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
             return HttpResponse(status=200)
 
@@ -289,7 +289,7 @@ class PositionApplyView(View):
     def get(self, request, position_id):
         user_id=request.user.id
         user=User.objects.prefetch_related('resume_set').filter(user_id=user_id)
-        
+
         apply_info:{
             'name':user.name,
             'email':user.email,
@@ -458,26 +458,15 @@ class PositionAdvertisement(View):
             'country':position.position.country.name,
             'total_reward':get_reward_currency(position.position.id)
         }for position in Position_item.objects.select_related('position').filter(
-                                                                            Q(start_date__lt=timezone.now()) & 
-                                                                            Q(end_date__gt=timezone.now()) & 
+                                                                            Q(start_date__lt=timezone.now()) &
+                                                                            Q(end_date__gt=timezone.now()) &
                                                                             Q(item_id=1)
                                                                             )]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
 
 class PositionMain(View):
-    def keyword_search(self, position_filter, keyword):
-        keyword_list = keyword.split(' ')
-
-        keyword_filter = Q()
-        for keyword in keyword_list:
-            keyword_filter.add(Q(name__icontains=keyword), Q.OR)
-            keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
-
-        position_filter = position_filter.filter(keyword_filter).distinct()
-        return position_filter
-
-    def sort_position(self, sort_by, year_filter, keyword):
+    def sort_position(self, sort_by, year_filter):
         sort={
             'latest':year_filter.order_by('-created_at'),
             'popularity':year_filter.annotate(count=Count('volunteers')).order_by('-count'),
@@ -486,33 +475,44 @@ class PositionMain(View):
         for key in sort:
             if sort_by==key:
                 position_filter=sort[key]
-                if keyword!=None:
-                    return self.keyword_search(position_filter, keyword)
-                else:
-                    return position_filter
+                return position_filter
 
-    
-    def filter_year(self, year, sort_by, city_filter, keyword):
+    def filter_year(self, year, sort_by, city_filter):
         if year==0:
             year_filter=city_filter.filter(entry=True)
-        elif year!=-1:
+        elif year==-1:
+            year_filter=city_filter
+        else:
             year_filter=city_filter.filter(Q(min_level__gte=year) & Q(max_level__lte=year))
-        return self.sort_position(sort_by, year_filter, keyword)
+        return self.sort_position(sort_by, year_filter)
 
-    def filter_city(self, city, year, sort_by, country_filter, keyword):
+    def filter_city(self, city, year, sort_by, country_filter):
         if city=='all':
             city_filter=country_filter
         else:
             city_filter=country_filter.filter(city__name__in=city)
-        return self.filter_year(year, sort_by, city_filter, keyword)
-    
-    def filter_country(self, country, city, year, sort_by, keyword):
+        return self.filter_year(year, sort_by, city_filter)
+
+    def filter_country(self, country, city, year, sort_by, position_filter):
         if country=='all':
-            country_filter=Position.objects.all()
+            country_filter=position_filter
         else:
-            country_filter=Position.objects.filter(country__name=country)
-        return self.filter_city(city, year, sort_by, country_filter, keyword)
-    
+            country_filter=position_filter.filter(country__name=country)
+        return self.filter_city(city, year, sort_by, country_filter)
+
+    def keyword_search(self, country, city, year, sort_by, keyword):
+        if keyword!=None:
+            keyword_list = keyword.split(' ')
+            keyword_filter = Q()
+            for keyword in keyword_list:
+                keyword_filter.add(Q(name__icontains=keyword), Q.OR)
+                keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
+
+            position_filter=Position.objects.filter(keyword_filter)
+        else:
+            position_filter=Position.objects.all()
+        return self.filter_country(country, city, year, sort_by, position_filter)
+
     def get(self, request):
         LIMIT=len(Position.objects.all())
         sort_by=request.GET.get('sort_by', 'latest')
@@ -522,8 +522,8 @@ class PositionMain(View):
         limit=int(request.GET.get('limit', LIMIT))
         offset=int(request.GET.get('offset', 0))
         keyword=request.GET.get('keyword', '디자이너')
-        
-        position_filter=self.filter_country(country, city, year, sort_by, keyword)
+
+        position_filter=self.keyword_search(country, city, year, sort_by, keyword)
 
         position_list=[{
             'image':position.company.image_set.first().image_url,
@@ -532,12 +532,12 @@ class PositionMain(View):
             'city':position.city.name if position.city else None,
             'country':position.country.name,
             'total_reward':get_reward_currency(position.id),
-            }for position in position_filter[offset:limit]] 
+            }for position in position_filter[offset:limit]]
 
         return JsonResponse({'position':position_list}, status=200)
 
 class JobAd(View):
-    
+
     @login_check
     def get(self,request):
         
