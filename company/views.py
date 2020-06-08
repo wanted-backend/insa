@@ -557,7 +557,9 @@ class JobAd(View):
             return JsonResponse({"message":None},status=200)
         return JsonResponse({"positions" : positions},status=200)
     
-    # def post(self,request):
+    def post(self,request):
+        
+        
         
         
 class ReadingMatchup(View):
