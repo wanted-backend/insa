@@ -4,7 +4,7 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
          PositionBookmarkView, PositionApplyView, LikedMatchupResume, LikedMatchupList, \
          JobAd , MatchupList , ThemeList , HomeView, RequestResume, \
          RequestMatchupList, ReadingMatchup, ReadingMatchupList, ProposalView, \
-         PositionAdvertisement, PositionMain
+         PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -26,4 +26,7 @@ urlpatterns = [
     path('/proposal', ProposalView.as_view()),
     path('/position/main', PositionMain.as_view()),
     path('/position/advertisement', PositionAdvertisement.as_view()),
+    path('/position/main/filter', MainFilter.as_view()),
+    path('/position/tag', TagView.as_view()),
+    path('/position/tag/search', TagSearch.as_view())
 ]
