@@ -1,9 +1,9 @@
 from django.urls import path
 
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
-         PositionBookmarkView, PositionApplyView, CompanyLikedResume, \
-         JobAd, ThemeList, HomeView, MatchupList, \
-         PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch
+         PositionBookmarkView, PositionApplyView, \
+         JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
+         PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch, JobAdItem
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -18,12 +18,13 @@ urlpatterns = [
     path('/matchup/list', MatchupList.as_view()),
     path('/themelist/<int:theme_id>', ThemeList.as_view()),
     path('/home', HomeView.as_view()),
-    path('/job-ad', JobAd.as_view()),
+    path('/job-ad/positions', JobAdPosition.as_view()),
     # path('/read/matchup', ReadingMatchup.as_view()),
     # path('/reading', ReadingMatchupList.as_view()),
     # path('/proposal', ProposalView.as_view()),
     path('/position/main', PositionMain.as_view()),
     path('/position/advertisement', PositionAdvertisement.as_view()),
+    path('/job-ad/items', JobAdItem.as_view()),
     path('/position/main/filter', MainFilter.as_view()),
     path('/position/tag', TagView.as_view()),
     path('/position/tag/search', TagSearch.as_view())
