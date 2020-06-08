@@ -54,7 +54,6 @@ class UserRegisterView(View):
                 name = data['name'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
                 agreement = data['agreement'],
-                created_at = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
             )
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
@@ -88,7 +87,6 @@ class AdminRegisterView(View):
                 contact = data['contact'],
                 email = data['email'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
-                created_at = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
 			)
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
@@ -173,6 +171,8 @@ class LikedCompanies(View):
         companies = Want.objects.filter(user_id=request.user.id)
         data = [
             {
+                'id':want.id,
+                'company_id':want.company.id,
                 'name':want.company.name,
                 'logo':want.company.image_url,
                 'date':want.created_at
@@ -494,19 +494,6 @@ class CareerResultView(View):
         row.delete()
 
         return HttpResponse(status=200)
-
-class CompanyLikedResumes(View):
-    @login_decorator
-    def get(self, request):
-        companies = Want.objects.filter(user_id=request.user.id)
-        data = [
-            {
-                'name':want.company.name,
-                'logo':want.company.image_url,
-                'date':want.created_at
-            } for want in companies
-        ]
-        return JsonResponse({'companies':data}, status=200)
 
 class CompanyRequestsResume(View):
     @login_decorator
