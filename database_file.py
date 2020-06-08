@@ -12,7 +12,7 @@ print("BASE_DIR=", end=""), print(BASE_DIR)
 sys.path.append(BASE_DIR)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "insa.settings")
-django.setup()
+django.setup(	)
 
 from company.models import *
 from user.models import *
@@ -72,12 +72,13 @@ with open(CSV_PATH, newline='') as csvfile:
     data_reader = csv.DictReader(csvfile)
 
     for row in data_reader:
+        exchange_rate = None if row['exchange_rate'] == '' else row['exchange_rate']
         Country.objects.create(
             name = row['name'],
             number = row['number'],
             currency = row['currency'],
             english_currency = row['english_currency'],
-            exchange_rate = row['exchange_rate'],
+            exchange_rate = exchange_rate,
             tenthousand_unit = row['tenthousand_unit']
         )
         print(row)

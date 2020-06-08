@@ -311,10 +311,14 @@ class PositionApplyView(View):
         )
         return HttpResponse(status=200)
 
-class ThemeTop(View):
+
+class ThemeList(View):
 
     def get(self,request,theme_id):
 
+        offset = int(request.GET.get('offset'))
+        limit  = int(request.GET.get('limit'))
+        themes_list = Position.objects.filter(theme_id=theme_id)
         themes = Theme.objects.get(id=theme_id)
 
         themetop = {
@@ -323,28 +327,18 @@ class ThemeTop(View):
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
         }
-
-        return JsonResponse({"theme_top" : themetop},status=200)
-
-class ThemeList(View):
-
-    def get(self,request,theme_id):
-
-        offset = int(request.GET.get('offset'))
-        limit  = int(request.GET.get('limit'))
-        themes = Position.objects.filter(theme_id=theme_id)
-
+        
         themelist = [{
-            "id"       : position.id,
-            "image"    : position.company.image_set.all().first().image_url,
-            "name"     : position.name,
-            "company"  : position.company.name,
-            "city"     : position.city.name if position.city else None,
-            "country"  : position.city.country.name if position.city else None,
-            "total_reward"   : position.total
-		} for position in themes[offset:offset + limit-1]]
+            "id"          : position.id,
+            "image"       : position.company.image_set.all().first().image_url,
+            "name"        : position.name,
+            "company"     : position.company.name,
+            "city"        : position.city.name if position.city else None,
+            "country"     : position.city.country.name if position.city else None,
+            "total_reward": get_reward_currency(position.id)
+		} for position in themes_list[offset:offset + limit-1]]
 
-        return JsonResponse({"theme_list":themelist},status=200)
+        return JsonResponse({"theme_top":themetop, "theme_list":themelist},status=200)
 
 class HomeView(View):
 
@@ -367,13 +361,13 @@ class HomeView(View):
         # }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
 
         new_employment = [{
-            "id"       : position.id,
-            "image"    : position.company.image_set.first().image_url,
-            "name"     : position.name,
-            "company"  : position.company.name,
-            "city"     : position.city.name,
-            "country"  : position.city.country.name,
-            "total_reward"   : position.total,
+            "id"             : position.id,
+            "image"          : position.company.image_set.first().image_url,
+            "name"           : position.name,
+            "company"        : position.company.name,
+            "city"           : position.city.name,
+            "country"        : position.city.country.name,
+            "total_reward"   : get_reward_currency(position.id),
         }for position in positions.order_by('created_at')[:4]]
 
         theme_list = [{
@@ -385,13 +379,13 @@ class HomeView(View):
         }for theme in themes[:4]]
 
         recommendations_of_the_week = [{
-            "id"       : recommend.id,
-            "image"    : recommend.company.image_set.first().image_url,
-            "name"     : recommend.name,
-            "company"  : recommend.company.name,
-            "city"     : recommend.city.name if recommend.city else None,
-            "country"  : recommend.city.country.name if recommend.city else None,
-            "total_reward"   : recommend.total,
+            "id"             : recommend.id,
+            "image"          : recommend.company.image_set.first().image_url,
+            "name"           : recommend.name,
+            "company"        : recommend.company.name,
+            "city"           : recommend.city.name if recommend.city else None,
+            "country"        : recommend.city.country.name if recommend.city else None,
+            "total_reward"   : get_reward_currency(recommend.id),
         }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
         return JsonResponse({"position_recommend"  : None,#user_recomended_position,
@@ -551,13 +545,13 @@ class JobAd(View):
                 "image"   : position.company.image_set.all().first().image_url,
                 "city"    : position.city.name if position.city else None,
                 "country" : position.country.name if postion.city else None,
-                "total_reward"  : position.total
+                "total_reward"  : get_reward_currency(postion.id)
             }for position in company_positions]
         except:
             return JsonResponse({"message":None},status=200)
         return JsonResponse({"positions" : positions},status=200)
     
-    def post(self,request):
+    # def post(self,request):
         
         
         
