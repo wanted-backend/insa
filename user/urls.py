@@ -2,10 +2,11 @@ from django.urls import path
 
 from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, \
          LogInView, CompanyLikedResumes, UserResumeWriteView, ResumeDetailWriteView, \
-         ResumeDetailView, CompanyRequestsResume, CompanyInterviewResume
+         ResumeDetailView, CompanyRequestsResume, CompanyInterviewResume, AdminExists
 
 urlpatterns = [
 	path('/exists', UserEmailExists.as_view()),
+	path('/admin/exists', AdminExists.as_view()),
     path('/register', UserRegisterView.as_view()),
 	path('/adminregister', AdminRegisterView.as_view()),
 	path('/login', LogInView.as_view()),
