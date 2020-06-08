@@ -131,6 +131,41 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+class Profile(View):
+    @login_decorator
+    def get(self, request):
+        user = User.objects.get(id=request.user.id)
+        data = [
+            {
+                'id':user.id,
+                'name':user.name,
+                'email':user.email,
+                'contact':user.contact,
+                'image':user.image_url
+            }
+        ]
+        return JsonResponse({'user_profile':data}, status=200)
+
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        user = User.objects.get(id=request.user.id)
+        user.name = data['name']
+        user.email = data['email']
+        user.contact = data['contact']
+        user.image_url = data['image']
+        user.save()
+        data = [
+            {
+                'id':user.id,
+                'name':user.name,
+                'email':user.email,
+                'contact':user.contact,
+                'image':user.image_url
+            }
+        ]
+        return JsonResponse({'user_profile':data}, status=200)
+
 class LikedCompanies(View):
 
     @login_decorator
