@@ -47,13 +47,14 @@ class UserRegisterView(View):
 			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
-                    return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
+                    return JsonResponse({'MESSAGE':'영문자, 숫자, 특수문자 사용하여 6자 이상 입력해주세요.'}, status=401)
 
             User.objects.create(
                 email = data['email'],
                 name = data['name'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
-                agreement = data['agreement']
+                agreement = data['agreement'],
+                created_at = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
             )
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
@@ -67,7 +68,7 @@ class AdminRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-
+            print(data)
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -79,7 +80,7 @@ class AdminRegisterView(View):
 			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
-                    return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
+                    return JsonResponse({'MESSAGE':'영문자, 숫자, 특수문자 사용하여 6자 이상 입력해주세요.'}, status=401)
 
             User.objects.create(
                 name = data['name'],
@@ -87,8 +88,25 @@ class AdminRegisterView(View):
                 contact = data['contact'],
                 email = data['email'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
+                created_at = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
 			)
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class AdminExists(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            print(data)
+            user = User.objects.prefetch_related('company').get(email=data['email'])
+            if user.job_position or user.company:
+                return JsonResponse({'MESSAGE':'True'}, status=200)
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
+        except User.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
+        except User.company.RelatedObjectDoesNotExist:
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
