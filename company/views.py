@@ -1,7 +1,7 @@
 import json
 import random
 import datetime
-
+import requests
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
 from django.db.models       import Q, Count, F
@@ -12,7 +12,7 @@ from utils                  import login_decorator, login_check
 from user.models            import User, Matchup, Work_information, Matchup_skill, Want
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal)
+                                    Reading, Proposal , Network)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -313,7 +313,7 @@ class PositionApplyView(View):
 
 
 class ThemeList(View):
-
+    
     def get(self,request,theme_id):
 
         offset = int(request.GET.get('offset'))
@@ -336,29 +336,30 @@ class ThemeList(View):
             "city"        : position.city.name if position.city else None,
             "country"     : position.city.country.name if position.city else None,
             "total_reward": get_reward_currency(position.id)
-		} for position in themes_list[offset:offset + limit-1]]
+		} for position in themes_list[offset:limit]]
 
         return JsonResponse({"theme_top":themetop, "theme_list":themelist},status=200)
 
 class HomeView(View):
 
-    # @login_check
+    @login_check
     def get(self,request):
 
-        # user = request.user
-        # roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
-        # mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
+        user = request.user
+        roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
+        mathced_position = Position.objects.filter(role_id=roles.role.id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
-        # user_recomended_position = [{
-        #     "id"       : position.id,
-        #     "image"    : position.company.image_set.all().first().image_url,
-        #     "name"     : position.name,
-        #     "company"  : position.company.name,
-        #     "city"     : position.position_workplace_set.get().workplace.city.name,
-        #     "country"  : position.position_workplace_set.get().workplace.city.country.name,
-        #     "reward"   : position.total,
-        # }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+        
+        user_recomended_position = [{
+            "id"             : position.id,
+            "image"          : position.company.image_set.first().image_url,
+            "name"           : position.name,
+            "company"        : position.company.name,
+            "city"           : position.city.name,
+            "country"        : position.city.country.name,
+            "total_reward"   : get_reward_currency(position.id),
+        }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else ''
 
         new_employment = [{
             "id"             : position.id,
@@ -371,11 +372,11 @@ class HomeView(View):
         }for position in positions.order_by('created_at')[:4]]
 
         theme_list = [{
-            "id"       : theme.id,
-            "image"    : theme.image_url,
-            "title"    : theme.title,
-            "desc"     : theme.description,
-            "logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
+            "id"             : theme.id,
+            "image"          : theme.image_url,
+            "title"          : theme.title,
+            "desc"           : theme.description,
+            "logos"          : list(set([logos.company.image_url for logos in theme.position_set.all()]))
         }for theme in themes[:4]]
 
         recommendations_of_the_week = [{
@@ -388,7 +389,7 @@ class HomeView(View):
             "total_reward"   : get_reward_currency(recommend.id),
         }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
-        return JsonResponse({"position_recommend"  : None,#user_recomended_position,
+        return JsonResponse({"position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
                              "Recommendation_week" : recommendations_of_the_week,
@@ -530,9 +531,9 @@ class PositionMain(View):
 
         return JsonResponse({'position':position_list}, status=200)
 
-class JobAd(View):
+class JobAdPosition(View):
 
-    @login_check
+    @login_decorator
     def get(self,request):
         
         try:
@@ -540,22 +541,72 @@ class JobAd(View):
             company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
             # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
             positions = [{
-                "id"      : position.id,
-                "name"    : position.name,
-                "image"   : position.company.image_set.all().first().image_url,
-                "city"    : position.city.name if position.city else None,
-                "country" : position.country.name if postion.city else None,
+                "id"            : position.id,
+                "name"          : position.name,
+                "image"         : position.company.image_set.all().first().image_url,
+                "city"          : position.city.name if position.city else None,
+                "country"       : position.country.name if postion.city else None,
                 "total_reward"  : get_reward_currency(postion.id)
             }for position in company_positions]
         except:
-            return JsonResponse({"message":None},status=200)
-        return JsonResponse({"positions" : positions},status=200)
+            return JsonResponse({ "positions" : '' },status=200)
+        return JsonResponse({ "positions" : positions },status=200)
+
+class JobAdItem(View):
     
-    # def post(self,request):
+    @login_decorator
+    def get(self,request):
+
+        items = Network.objects.all()
+        itemdetail = [{
+            "id"         : item.id,
+            "name"       : item.name,
+            "period"     : item.period,
+            "item_price" : item.displayed_amount,
+            "include_tax": item.price_amount,
+        }for item in items]
         
+        return JsonResponse({"items" : itemdetail }, status=200)
+    
+    @login_decorator
+    def post(self,request):
         
+        data = json.loads(request.body)
+
+        me = 'http://localhost:8000'
         
+        request_url = "https://kapi.kakao.com/v1/payment/ready"
         
+        headers1 = {
+            'Authorization' : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
+            "Content-type"  : 'application/application/x-www-form-urlencoded;charset=utf-8',
+        }
+        
+        params1 = {
+            'cid' : "TC0ONETIME",
+            'partner_order_id': '1001',
+            'partner_user_id': 'wanted',
+            'item_name': data['name'],
+            'quantity': data['period'],
+            'total_amount': data['item_price'],
+            'tax_free_amount': 0,
+            'vat_amount' : int(int(data['include_tax']) - int(data['item_price'])),
+            'approval_url': me + '/kakaopay/purchase',
+            'fail_url': me,
+            'cancel_url': me,
+        }
+
+        response = requests.post(request_url,params=params1,headers=headers1)
+        response = json.loads(response.text)
+       
+        return JsonResponse({"response" : response},status=200)
+        
+class Purchased(View):
+    
+    def post(self,request):
+        
+        data = json.loads(request.body)
+    
 class ReadingMatchup(View):
     @login_decorator
     def post(self, request):
