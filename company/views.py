@@ -464,18 +464,7 @@ class PositionAdvertisement(View):
         return JsonResponse({'advertisement':advertisement}, status=200)
 
 class PositionMain(View):
-    def keyword_search(self, position_filter, keyword):
-        keyword_list = keyword.split(' ')
-
-        keyword_filter = Q()
-        for keyword in keyword_list:
-            keyword_filter.add(Q(name__icontains=keyword), Q.OR)
-            keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
-
-        position_filter = position_filter.filter(keyword_filter).distinct()
-        return position_filter
-
-    def sort_position(self, sort_by, year_filter, keyword):
+    def sort_position(self, sort_by, year_filter):
         sort={
             'latest':year_filter.order_by('-created_at'),
             'popularity':year_filter.annotate(count=Count('volunteers')).order_by('-count'),
@@ -484,32 +473,43 @@ class PositionMain(View):
         for key in sort:
             if sort_by==key:
                 position_filter=sort[key]
-                if keyword!=None:
-                    return self.keyword_search(position_filter, keyword)
-                else:
-                    return position_filter
+                return position_filter
 
-
-    def filter_year(self, year, sort_by, city_filter, keyword):
+    def filter_year(self, year, sort_by, city_filter):
         if year==0:
             year_filter=city_filter.filter(entry=True)
-        elif year!=-1:
+        elif year==-1:
+            year_filter=city_filter
+        else:
             year_filter=city_filter.filter(Q(min_level__gte=year) & Q(max_level__lte=year))
-        return self.sort_position(sort_by, year_filter, keyword)
+        return self.sort_position(sort_by, year_filter)
 
-    def filter_city(self, city, year, sort_by, country_filter, keyword):
+    def filter_city(self, city, year, sort_by, country_filter):
         if city=='all':
             city_filter=country_filter
         else:
             city_filter=country_filter.filter(city__name__in=city)
-        return self.filter_year(year, sort_by, city_filter, keyword)
+        return self.filter_year(year, sort_by, city_filter)
 
-    def filter_country(self, country, city, year, sort_by, keyword):
+    def filter_country(self, country, city, year, sort_by, position_filter):
         if country=='all':
-            country_filter=Position.objects.all()
+            country_filter=position_filter
         else:
-            country_filter=Position.objects.filter(country__name=country)
-        return self.filter_city(city, year, sort_by, country_filter, keyword)
+            country_filter=position_filter.filter(country__name=country)
+        return self.filter_city(city, year, sort_by, country_filter)
+
+    def keyword_search(self, country, city, year, sort_by, keyword):
+        if keyword!=None:
+            keyword_list = keyword.split(' ')
+            keyword_filter = Q()
+            for keyword in keyword_list:
+                keyword_filter.add(Q(name__icontains=keyword), Q.OR)
+                keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
+
+            position_filter=Position.objects.filter(keyword_filter)
+        else:
+            position_filter=Position.objects.all()
+        return self.filter_country(country, city, year, sort_by, position_filter)
 
     def get(self, request):
         LIMIT=len(Position.objects.all())
@@ -521,7 +521,7 @@ class PositionMain(View):
         offset=int(request.GET.get('offset', 0))
         keyword=request.GET.get('keyword', '디자이너')
 
-        position_filter=self.filter_country(country, city, year, sort_by, keyword)
+        position_filter=self.keyword_search(country, city, year, sort_by, keyword)
 
         position_list=[{
             'image':position.company.image_set.first().image_url,
