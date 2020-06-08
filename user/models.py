@@ -27,7 +27,7 @@ class Security(models.Model):
     date = models.DateField(auto_now=True)
 
     class Meta:
-        db_table = 'security'
+        db_table = 'securities'
 
 class Want(models.Model):
 
@@ -111,7 +111,7 @@ class Resume(models.Model):
     contact = models.CharField(max_length=50, null=True)
     email = models.EmailField(max_length=500, null=True)
     description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateField(auto_now_add=True)
     status = models.BooleanField(default=0)
     is_matchup = models.BooleanField(default=0)
     image_url = models.URLField(max_length=2000, null=True)
@@ -131,8 +131,10 @@ class Resume_file(models.Model):
 class Career(models.Model):
 
     resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    start = models.DateTimeField(null=True)
-    end = models.DateTimeField(null=True)
+    start_year = models.CharField(max_length=30, null=True)
+    start_month = models.CharField(max_length=30, null=True)
+    end_year = models.CharField(max_length=30, null=True)
+    end_month = models.CharField(max_length=30, null=True)
     is_working = models.BooleanField(default=0)
     company = models.CharField(max_length=100, null=True)
     position = models.CharField(max_length=100, null=True)
@@ -143,8 +145,10 @@ class Career(models.Model):
 class Result(models.Model):
 
     career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True)
-    start = models.DateTimeField(null=True)
-    end = models.DateTimeField(null=True)
+    start_year = models.CharField(max_length=30, null=True)
+    start_month = models.CharField(max_length=30, null=True)
+    end_year = models.CharField(max_length=30, null=True)
+    end_month = models.CharField(max_length=30, null=True)
     title = models.CharField(max_length=300, null=True)
     content = models.CharField(max_length=300, null=True)
 
@@ -154,10 +158,12 @@ class Result(models.Model):
 class Education(models.Model):
 
     resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    start = models.DateTimeField(null=True)
-    end = models.DateTimeField(null=True)
-    is_working = models.BooleanField(default=0)
+    start_year = models.CharField(max_length=30, null=True)
+    start_month = models.CharField(max_length=30, null=True)
+    end_year = models.CharField(max_length=30, null=True)
+    end_month = models.CharField(max_length=30, null=True)
     school = models.CharField(max_length=100, null=True)
+    is_working = models.BooleanField(default=0)
     specialism = models.CharField(max_length=100, null=True)
     subject = models.CharField(max_length=200, null=True)
 
@@ -168,7 +174,8 @@ class Education(models.Model):
 class Award(models.Model):
 
     resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    date = models.DateTimeField(null=True)
+    date_year = models.CharField(max_length=30, null=True)
+    date_month = models.CharField(max_length=30, null=True)
     name = models.CharField(max_length=100, null=True)
     content = models.CharField(max_length=200, null=True)
 
