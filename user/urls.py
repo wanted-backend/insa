@@ -2,8 +2,8 @@ from django.urls import path
 
 from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, \
          LogInView, UserResumeWriteView, ResumeDetailWriteView, \
-         ResumeDetailView, CareerResultView, ResumeMainView, CompanyRequestsResume, \
-         CompanyInterviewResume, AdminExists, Profile, LikedCompanies
+         ResumeDetailView, CareerResultView, ResumeMainView, \
+         AdminExists, Profile, LikedCompanies, UserMatchUpView
 
 urlpatterns = [
 	path('/exists', UserEmailExists.as_view()),
@@ -19,6 +19,7 @@ urlpatterns = [
     path('/resumeDetail/<str:main_resume_id>', ResumeDetailView.as_view()),
     path('/resumeResult/<str:main_career_id>', CareerResultView.as_view()),
     path('/resumeMain', ResumeMainView.as_view()),
-    path('/requests', CompanyRequestsResume.as_view()),
-    path('/proposals', CompanyInterviewResume.as_view()),
+    path('/specList', UserMatchUpView.as_view()),
+    # path('/requests', CompanyRequestsResume.as_view()),
+    # path('/proposals', CompanyInterviewResume.as_view()),
 ]

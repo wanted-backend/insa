@@ -11,9 +11,9 @@ from datetime           import datetime
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Company, Company_matchup, Proposal
+from company.models     import Company, Company_matchup, Proposal, Job_category, Role
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language,\
-                                Test, Link, Level, Linguistic, Resume_file, Want, Matchup
+                                Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career
 
 class UserEmailExists(View):
     def post(self, request):
@@ -323,7 +323,7 @@ class ResumeDetailView(View):
 
         if category == 'career':
             remove(Career)
-        elif categroy == 'education':
+        elif category == 'education':
             remove(Education)
         elif category == 'award':
             remove(Award)
@@ -495,30 +495,47 @@ class CareerResultView(View):
 
         return HttpResponse(status=200)
 
-class CompanyRequestsResume(View):
+class UserMatchUpView(View):
     @login_decorator
     def get(self, request):
-        matchup = Matchup.objects.get(user_id=request.user.id)
-        requests_resume = Company_matchup.objects.filter(matchup_id=matchup.id)
-        data = [
-            {
-                'name':request.company.name,
-                'logo':request.company.image_url,
-                'date':request.created_at
-            } for request in requests_resume
-        ]
-        return JsonResponse({'is_resume_request':data}, status=200)
+        speclist=[]
+        user_career = Job_category.objects.prefetch_related('role_set')
+        user_year = Matchup_career.objects.all().values()
+        for career in user_career:
+            title = career.name
+            lists = list(career.role_set.values('id','name'))
+            speclist.append({'title':title})
+            speclist.append({'lists':lists})
+        year = []
+        for years in user_year:
+            year.append(years)
+        speclist.append({'year':year})
+        return JsonResponse({'speclist':speclist}, status=200)
 
-class CompanyInterviewResume(View):
-    @login_decorator
-    def get(self, request):
-        matchup = Matchup.objects.get(user_id=request.user.id)
-        interviews = Proposal.objects.filter(matchup_id=matchup.id)
-        data = [
-            {
-                'name':interview.company.name,
-                'logo':interview.company.image_url,
-                'date':interview.created_at
-            } for interview in interviews
-        ]
-        return JsonResponse({'is_resume_request':data}, status=200)
+# class CompanyRequestsResume(View):
+#     @login_decorator
+#     def get(self, request):
+#         matchup = Matchup.objects.get(user_id=request.user.id)
+#         requests_resume = Company_matchup.objects.filter(matchup_id=matchup.id)
+#         data = [
+#             {
+#                 'name':request.company.name,
+#                 'logo':request.company.image_url,
+#                 'date':request.created_at
+#             } for request in requests_resume
+#         ]
+#         return JsonResponse({'is_resume_request':data}, status=200)
+
+# class CompanyInterviewResume(View):
+#     @login_decorator
+#     def get(self, request):
+#         matchup = Matchup.objects.get(user_id=request.user.id)
+#         interviews = Proposal.objects.filter(matchup_id=matchup.id)
+#         data = [
+#             {
+#                 'name':interview.company.name,
+#                 'logo':interview.company.image_url,
+#                 'date':interview.created_at
+#             } for interview in interviews
+#         ]
+#         return JsonResponse({'is_resume_request':data}, status=200)

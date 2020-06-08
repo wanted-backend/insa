@@ -45,32 +45,17 @@ class Matchup_career(models.Model):
     class Meta:
         db_table = 'matchup_careers'
 
-class Matchup(models.Model):
-
-    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
-    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True)
-    matchup_career = models.ForeignKey('Matchup_career', on_delete=models.SET_NULL, null=True)
-    country = models.ForeignKey('company.Country', on_delete=models.SET_NULL, null=True)
-    income = models.IntegerField(default=0)
-    school = models.CharField(max_length=100, null=True)
-    description = models.TextField(blank=True)
-    companies_exception = models.ManyToManyField('company.Company', through='Exception', related_name='companies_exception')
-
-    class Meta:
-        db_table = 'matchup'
-
 class Exception(models.Model):
 
     company = models.ForeignKey('company.Company', on_delete=models.SET_NULL, null=True)
-    matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
 
     class Meta:
         db_table = 'exceptions'
 
 class Matchup_skill(models.Model):
 
-    matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     skill = models.CharField(max_length=50, null=True)
 
     class Meta:
@@ -78,7 +63,7 @@ class Matchup_skill(models.Model):
 
 class Matchup_job(models.Model):
 
-    matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
     job_text = models.ForeignKey('Job_text', on_delete=models.SET_NULL, null=True)
 
     class Meta:
@@ -93,20 +78,10 @@ class Job_text(models.Model):
     class Meta:
         db_table = 'job_texts'
 
-class Work_information(models.Model):
-
-    matchup = models.ForeignKey('Matchup', on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=100)
-    start = models.DateField(null=True)
-    end = models.DateField(null=True)
-    is_working = models.BooleanField(default=0)
-
-    class Meta:
-        db_table = 'work_informations'
-
 class Resume(models.Model):
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
-    title = models.CharField(max_length=150, null=True)
+    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True)
+    matchup_career = models.ForeignKey('Matchup_career', on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True)
     contact = models.CharField(max_length=50, null=True)
     email = models.EmailField(max_length=500, null=True)
@@ -115,6 +90,9 @@ class Resume(models.Model):
     status = models.BooleanField(default=0)
     is_matchup = models.BooleanField(default=0)
     image_url = models.URLField(max_length=2000, null=True)
+    title = models.CharField(max_length=150, null=True)
+    income = models.IntegerField(default=0)
+    school = models.CharField(max_length=100, null=True)
     deleted = models.BooleanField(default=0)
 
     class Meta:

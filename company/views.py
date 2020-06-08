@@ -1,7 +1,7 @@
 import json
 import random
 import datetime
-import requests
+
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
 from django.db.models       import Q, Count, F
@@ -9,7 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
 from utils                  import login_decorator, login_check
-from user.models            import User, Matchup, Work_information, Matchup_skill, Want, Matchup_career
+from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
                                     Reading, Proposal, Category , Network)
@@ -127,50 +127,48 @@ class PositionList(View):
 
         return JsonResponse({'company':data}, status=200)
 
-class LikedMatchupResume(View):
+class CompanyLikedResume(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
         try:
-            if 'matchup_id' in data:
-                matchup_id = data['matchup_id']
-                matchup = Matchup.objects.get(id=matchup_id)
+            if 'resume_id' in data:
+                resume_id = data['resume_id']
+                resume = Resume.objects.get(id=resume_id)
                 company = Company.objects.get(user_id=request.user.id)
-                like = Like.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True)
+                like = Like.objects.filter(company_id=company.id, resume_id=resume_id, status=True)
                 if like.exists():
                     like.delete()
                     return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
                 Like.objects.create(
                     company_id=company.id,
-                    matchup_id=matchup_id,
+                    resume_id=resume_id,
                     status = True
                 )
                 Want.objects.create(
-                    user_id=matchup.resume.user.id,
+                    user_id=resume.user.id,
                     company_id=company.id
                 )
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class LikedMatchupList(View):
     @login_decorator
     def get(self, request):
         try:
-            user = request.user
-            company = Company.objects.get(user_id=user.id)
+            company = Company.objects.get(user_id=request.user.id)
             likes = Like.objects.filter(company_id=company.id, status=True)
             for like in likes:
                 data = [
                     {
-                        'id':like.matchup.resume.user.id,
-                        'name':like.matchup.resume.user.name,
-                        'description':like.matchup.description,
-                        'role':like.matchup.role.name,
-                        'career':like.matchup.matchup_career.year,
-                        'skills':list(Matchup_skill.objects.filter(matchup_id=like.matchup.id).values('id', 'skill')),
-                        'work_info':list(Work_information.objects.filter(matchup_id=like.matchup.id).values('id', 'name', 'start', 'end', 'is_working')),
-                        'education':like.matchup.school,
+                        'id':like.resume.user.id,
+                        'name':like.resume.user.name,
+                        'description':like.resume.description,
+                        'role':like.resume.role.name,
+                        'career':like.resume.matchup_career.year,
+                        'skills':list(Matchup_skill.objects.filter(resume_id=like.resume.id).values()),
+                        'work_info':list(Career.objects.filter(resume_id=like.resume.id).values()),
+                        'education':like.resume.school,
                     }
                 ]
                 return JsonResponse({'liked_matchup':data}, status=200)
@@ -180,18 +178,18 @@ class LikedMatchupList(View):
 class MatchupList(View):
     @login_decorator
     def get(self, request):
-        matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set')
+        resume = Resume.objects.all()
         data = [
             {
                 'id':match.user.id,
                 'user':match.user.name,
                 'role':match.role.name,
                 'career':match.matchup_career.year,
-                'description':match.resume.description if match.resume.status == True else match.description,
-                'skills':list(Matchup_skill.objects.filter(matchup_id=match.id).values('id', 'skill')),
-                'work_info':list(Work_information.objects.filter(matchup_id=match.id).values('id', 'name', 'start', 'end', 'is_working')),
+                'description':match.description if match.status == True else match.description,
+                'skills':list(Matchup_skill.objects.filter(resume_id=match.id).values()),
+                'work_info':list(Career.objects.filter(resume_id=match.id).values()),
                 'education':match.school
-            } for match in matchup
+            } for match in resume
         ]
         return JsonResponse({'matchup_list':data}, status=200)
 
@@ -391,51 +389,51 @@ class HomeView(View):
                              "Recommendation_week" : recommendations_of_the_week,
                             },status=200)
 
-class RequestResume(View):
-    @login_decorator
-    def post(self, request):
-        data = json.loads(request.body)
-        try:
-            if 'matchup_id' in data:
-                matchup_id = data['matchup_id']
-                matchup = Matchup.objects.get(id=matchup_id)
-                company = Company.objects.get(user_id=request.user.id)
-                if matchup.resume.is_matchup == True:
-                    if Company_matchup.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
-                        return JsonResponse({'MESSAGE':'이미 요청됨'}, status=401)
-                    Company_matchup.objects.create(
-                        company_id=company.id,
-                        matchup_id=matchup_id,
-                        status = True
-                    )
-                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-                return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+# class RequestResume(View):
+#     @login_decorator
+#     def post(self, request):
+#         data = json.loads(request.body)
+#         try:
+#             if 'matchup_id' in data:
+#                 matchup_id = data['matchup_id']
+#                 matchup = Matchup.objects.get(id=matchup_id)
+#                 company = Company.objects.get(user_id=request.user.id)
+#                 if matchup.resume.is_matchup == True:
+#                     if Company_matchup.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
+#                         return JsonResponse({'MESSAGE':'이미 요청됨'}, status=401)
+#                     Company_matchup.objects.create(
+#                         company_id=company.id,
+#                         matchup_id=matchup_id,
+#                         status = True
+#                     )
+#                     return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+#                 return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+#         except KeyError:
+#             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class RequestMatchupList(View):
-    @login_decorator
-    def get(self, request):
-        try:
-            company = Company.objects.get(user_id=request.user.id)
-            requests = Company_matchup.objects.filter(company_id=company.id, status=True)
-            for request in requests:
-                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=request.matchup.user.id)
-                data = [
-                    {
-                        'id':request.id,
-                        'name':request.matchup.user.name,
-                        'description':request.matchup.description,
-                        'role':request.matchup.role.name,
-                        'career':request.matchup.matchup_career.year,
-                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
-                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
-                        'education':request.matchup.school,
-                    }
-                ]
-                return JsonResponse({'is_resume_request':data}, status=200)
-        except ValueError:
-            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+# class RequestMatchupList(View):
+#     @login_decorator
+#     def get(self, request):
+#         try:
+#             company = Company.objects.get(user_id=request.user.id)
+#             requests = Company_matchup.objects.filter(company_id=company.id, status=True)
+#             for request in requests:
+#                 matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=request.matchup.user.id)
+#                 data = [
+#                     {
+#                         'id':request.id,
+#                         'name':request.matchup.user.name,
+#                         'description':request.matchup.description,
+#                         'role':request.matchup.role.name,
+#                         'career':request.matchup.matchup_career.year,
+#                         'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
+#                         'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+#                         'education':request.matchup.school,
+#                     }
+#                 ]
+#                 return JsonResponse({'is_resume_request':data}, status=200)
+#         except ValueError:
+#             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
 class PositionAdvertisement(View):
     def get(self, request):
@@ -602,86 +600,86 @@ class Purchased(View):
         
         data = json.loads(request.body)
     
-class ReadingMatchup(View):
-    @login_decorator
-    def post(self, request):
-        data = json.loads(request.body)
-        try:
-            if 'matchup_id' in data:
-                matchup_id = data['matchup_id']
-                matchup = Matchup.objects.get(id=matchup_id)
-                company = Company.objects.get(user_id=request.user.id)
-                if Reading.objects.filter(company_id=company.id, matchup_id=matchup_id, read=True).exists():
-                    return JsonResponse({'MESSAGE':'열람한 이력서'}, status=401)
-                Reading.objects.create(
-                    company_id=company.id,
-                    matchup_id=matchup.id,
-                    read=True,
-                    interview=False
-                )
-                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+# class ReadingMatchup(View):
+#     @login_decorator
+#     def post(self, request):
+#         data = json.loads(request.body)
+#         try:
+#             if 'matchup_id' in data:
+#                 matchup_id = data['matchup_id']
+#                 matchup = Matchup.objects.get(id=matchup_id)
+#                 company = Company.objects.get(user_id=request.user.id)
+#                 if Reading.objects.filter(company_id=company.id, matchup_id=matchup_id, read=True).exists():
+#                     return JsonResponse({'MESSAGE':'열람한 이력서'}, status=401)
+#                 Reading.objects.create(
+#                     company_id=company.id,
+#                     matchup_id=matchup.id,
+#                     read=True,
+#                     interview=False
+#                 )
+#                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+#         except KeyError:
+#             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class ReadingMatchupList(View):
-    @login_decorator
-    def get(self, request):
-        try:
-            company = Company.objects.get(user_id=request.user.id)
-            reading = Reading.objects.prefetch_related('matchup').filter(company_id=company.id)
-            data = [
-                {
-                    'id':read.id,
-                    'name':read.matchup.user.name,
-                    'description':read.matchup.description,
-                    'role':read.matchup.role.name,
-                    'career':read.matchup.matchup_career.year,
-                    'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=read.matchup.id)],
-                    'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=read.matchup.id)],
-                    'education':read.matchup.school,
-                } for read in reading
-            ]
-            return JsonResponse({'reading_matchup':data}, status=200)
-        except ValueError:
-            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+# class ReadingMatchupList(View):
+#     @login_decorator
+#     def get(self, request):
+#         try:
+#             company = Company.objects.get(user_id=request.user.id)
+#             reading = Reading.objects.prefetch_related('matchup').filter(company_id=company.id)
+#             data = [
+#                 {
+#                     'id':read.id,
+#                     'name':read.matchup.user.name,
+#                     'description':read.matchup.description,
+#                     'role':read.matchup.role.name,
+#                     'career':read.matchup.matchup_career.year,
+#                     'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=read.matchup.id)],
+#                     'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=read.matchup.id)],
+#                     'education':read.matchup.school,
+#                 } for read in reading
+#             ]
+#             return JsonResponse({'reading_matchup':data}, status=200)
+#         except ValueError:
+#             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
-class ProposalView(View):
-    @login_decorator
-    def post(self, request):
-        data = json.loads(request.body)
-        try:
-            Proposal.objects.create(
-                company_id = Company.objects.get(user_id=request.user.id).id,
-                matchup_id = Matchup.objects.get(id=data['matchup_id']).id,
-                position_id = Position.objects.get(id=data['position_id']).id,
-                content = data['content'],
-                title = data['title'],
-                start = data['start'],
-                end = data['end'],
-                place = data['place'],
-                stock = data['stock']
-            )
+# class ProposalView(View):
+#     @login_decorator
+#     def post(self, request):
+#         data = json.loads(request.body)
+#         try:
+#             Proposal.objects.create(
+#                 company_id = Company.objects.get(user_id=request.user.id).id,
+#                 matchup_id = Matchup.objects.get(id=data['matchup_id']).id,
+#                 position_id = Position.objects.get(id=data['position_id']).id,
+#                 content = data['content'],
+#                 title = data['title'],
+#                 start = data['start'],
+#                 end = data['end'],
+#                 place = data['place'],
+#                 stock = data['stock']
+#             )
 
-            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+#             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+#         except KeyError:
+#             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-    @login_decorator
-    def get(self, request):
-        interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
-        data = [
-            {
-                'id':interview.id,
-                'name':interview.matchup.user.name,
-                'description':interview.matchup.description,
-                'role':interview.matchup.role.name,
-                'career':interview.matchup.matchup_career.year,
-                'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=interview.matchup.id)],
-                'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=interview.matchup.id)],
-                'education':interview.matchup.school
-            } for interview in interviews
-        ]
-        return JsonResponse({'interview_proposal':data}, status=200)
+#     @login_decorator
+#     def get(self, request):
+#         interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
+#         data = [
+#             {
+#                 'id':interview.id,
+#                 'name':interview.matchup.user.name,
+#                 'description':interview.matchup.description,
+#                 'role':interview.matchup.role.name,
+#                 'career':interview.matchup.matchup_career.year,
+#                 'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=interview.matchup.id)],
+#                 'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=interview.matchup.id)],
+#                 'education':interview.matchup.school
+#             } for interview in interviews
+#         ]
+#         return JsonResponse({'interview_proposal':data}, status=200)
 
 class MainFilter(View):
     def get(self, request):
@@ -722,5 +720,3 @@ class TagSearch(View):
             }for position in tag_search[offset:limit]]
 
         return JsonResponse({'position':search_list}, status=200)
-
-

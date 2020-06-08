@@ -19,10 +19,8 @@ class Company(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted = models.BooleanField(default=0)
-    companies_like_matchup = models.ManyToManyField('user.Matchup', through='Like', related_name='companies_like_matchup')
-    companies_reading = models.ManyToManyField('user.Matchup', through='Reading', related_name='companies_reading')
+    companies_like_matchup = models.ManyToManyField('user.Resume', through='Like', related_name='companies_resumes')
     companies_tag = models.ManyToManyField('Tag', through='Company_tag', related_name='companies_tag')
-    companies_matchup = models.ManyToManyField('user.Matchup', through='Company_matchup', related_name='companies_matchup')
     companies_matchup_items = models.ManyToManyField('Matchup_item', through='Company_matchup_item', related_name='companies_matchup_items')
 
     class Meta:
@@ -230,7 +228,7 @@ class Volunteers(models.Model):
 class Like(models.Model):
 
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=0)
 
@@ -255,7 +253,7 @@ class Role(models.Model):
 class Company_matchup(models.Model):
 
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=0)
 
@@ -265,7 +263,7 @@ class Company_matchup(models.Model):
 class Reading(models.Model):
 
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     read = models.BooleanField(default=0)
 
     class Meta:
@@ -294,7 +292,7 @@ class Company_matchup_item(models.Model):
 
 class Proposal(models.Model):
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
-    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     content = models.TextField()
     title = models.CharField(max_length=100)
