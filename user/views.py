@@ -35,10 +35,10 @@ class UserRegisterView(View):
         try:
             data = json.loads(request.body)
             print(data)
-            
+
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
-			
+
 			# 빈 문자열 검사
             for value in data.values():
                 if value == '':
@@ -69,7 +69,6 @@ class AdminRegisterView(View):
         try:
             data = json.loads(request.body)
             print(data)
-			
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -132,13 +131,46 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+class LikedCompanies(View):
+
+    @login_decorator
+    def get(self, request):
+        companies = Want.objects.filter(user_id=request.user.id)
+        data = [
+            {
+                'name':want.company.name,
+                'logo':want.company.image_url,
+                'date':want.created_at
+            } for want in companies
+        ]
+        return JsonResponse({'companies':data}, status=200)
+
+class ResumeMainView(View):
+
+    @login_decorator
+    def get(self, request):
+        user = request.user
+        resumeMain = Resume.objects.filter(user_id=user.id).values('id','title', 'created_at', 'status')
+        for resume in resumeMain:
+            if resume['title'] == None:
+                resume['title']=""
+            if resume['status'] == False:
+                resume['status']="작성 완료"
+            else:
+                resume['status']="작성 중"
+
+        return JsonResponse({'data':list(resumeMain)}, status=200)
+
 class ResumeView(View):
+
     @login_decorator
     def get(self, request):
         user = request.user
         resume = Resume.objects.create()
         resume.user_id = user.id
+        resume.status = True
         resume.save()
+
 
         print(resume.id)
 
@@ -180,8 +212,14 @@ class UserResumeWriteView(View):
                 'image':resume.image_url,
             }
 
-
         return JsonResponse({'resume':data}, status=200)
+
+    @login_decorator
+    def delete(self, request, main_resume_id):
+        data = Resume.objects.get(id=main_resume_id)
+        data.delete()
+
+        return HttpResponse(status=200)
 
     @login_decorator
     def post(self, request, main_resume_id):
@@ -198,17 +236,13 @@ class UserResumeWriteView(View):
             resume.contact=data['phone']
             resume.description=data['about']
             resume.image_url=data['image']
+            resume.status=data['status']
             resume.save()
 
-            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return HttpResponse(status=200)
 
         except KeyError:
             return JsonResponse({'MESSAGE':'keyerror'}, status=401)
-
-    # @login_decorator
-    # def delete(self, request, main_resume_id):
-    #    data = json.loads(request.body)
-    #    user = request.user
 
 class ResumeDetailView(View):
 
@@ -217,20 +251,22 @@ class ResumeDetailView(View):
 
         category = request.GET.get('category', None)
 
-        def classification( affiliation_method):
+        def classification(affiliation_method):
                 class_list = affiliation_method.objects.create()
                 class_list.resume_id = main_resume_id
                 class_list.save()
 
                 data={
                     'id':class_list.id,
-                    'resume_id':main_resume_id
+                    'resume_id':int(main_resume_id)
                 }
 
                 return data
 
         if category == 'career':
             data = classification(Career)
+        elif category == 'education':
+            data = classification(Education)
         elif category == 'award':
             data = classification(Award)
         elif category == 'language':
@@ -240,6 +276,28 @@ class ResumeDetailView(View):
 
         return JsonResponse({'data':data}, status=200)
 
+    @login_decorator
+    def delete(self, request, main_resume_id):
+
+        data = json.loads(request.body)
+        category = request.GET.get('category', None)
+
+        def remove(kind):
+            row = kind.objects.get(id=data['id'])
+            row.delete()
+
+        if category == 'career':
+            remove(Career)
+        elif categroy == 'education':
+            remove(Education)
+        elif category == 'award':
+            remove(Award)
+        elif category == 'language':
+            remove(Language)
+        elif category == 'link':
+            remove(Link)
+        return HttpResponse(status=200)
+
 class ResumeDetailWriteView(View):
 
     @login_decorator
@@ -248,16 +306,67 @@ class ResumeDetailWriteView(View):
 
          category = request.GET.get('category', None)
 
+         def year_month(theme_set, theme):
+
+             data=[]
+             for index,element in enumerate(theme_set):
+                 start_year = theme.objects.filter(resume_id=main_resume_id).values('start_year')[index]
+                 start_month = theme.objects.filter(resume_id=main_resume_id).values('start_month')[index]
+                 end_year = theme.objects.filter(resume_id=main_resume_id).values('end_year')[index]
+                 end_month = theme.objects.filter(resume_id=main_resume_id).values('end_month')[index]
+                 start = [start_year['start_year'], start_month['start_month']]
+                 end = [end_year['end_year'], end_month['end_month']]
+
+                 element['start']= start
+                 element['end']= end
+                 data.append(element)
+
+             return data
+
          if category == 'career':
-             data = Career.objects.filter(resume_id=main_resume_id).values()
+             data= []
+             elements = Career.objects.filter(resume_id=main_resume_id).values('id', 'resume_id', 'is_working', 'company', 'position')
+             datas = year_month(elements, Career)
+
+             for data_list in datas:
+                 result = Result.objects.filter(career_id=data_list['id']).values('id','career_id','title','content')
+
+                 for index,element in enumerate(result):
+                     start_year = Result.objects.filter(career_id=data_list['id']).values('start_year')[index]
+                     start_month = Result.objects.filter(career_id=data_list['id']).values('start_month')[index]
+                     end_year = Result.objects.filter(career_id=data_list['id']).values('end_year')[index]
+                     end_month = Result.objects.filter(career_id=data_list['id']).values('end_month')[index]
+                     start = [start_year['start_year'], start_month['start_month']]
+                     end = [end_year['end_year'], end_month['end_month']]
+
+                     element['start']= start
+                     element['end']= end
+
+                 data_list['result']=list(result)
+                 data.append(data_list)
+
          elif category == 'award':
-             data = Award.objects.filter(resume_id=main_resume_id).values()
+             data = []
+             elements = Award.objects.filter(resume_id=main_resume_id).values('id','resume_id','name','content')
+
+             for index,element in enumerate(elements):
+                 year = Award.objects.filter(resume_id=main_resume_id).values('date_year')[index]
+                 month = Award.objects.filter(resume_id=main_resume_id).values('date_month')[index]
+                 date = [year['date_year'], month['date_month']]
+                 element['date']=date
+                 data.append(element)
+
+         elif category == 'education':
+
+             elements = Education.objects.filter(resume_id=main_resume_id).values('id','is_working','school','specialism','subject')
+             data = year_month(elements, Education)
+
          elif category == 'language':
              data = Language.objects.filter(resume_id=main_resume_id).values()
          elif category == 'link':
              data = Link.objects.filter(resume_id=main_resume_id).values()
 
-         return JsonResponse({'career':list(data)}, status=200)
+         return JsonResponse({'data':list(data)}, status=200)
 
     @login_decorator
     def post(self, request, main_resume_id):
@@ -268,22 +377,50 @@ class ResumeDetailWriteView(View):
 
         if category == 'career':
             for index_data in data:
+
                 careers = Career.objects.get(id=index_data['id'])
-                careers.start = index_data['start']
-                careers.end = index_data['end']
+                careers.start_year = index_data['start'][0]
+                careers.start_month = index_data['start'][1]
+                careers.end_year = index_data['end'][0]
+                careers.end_month = index_data['end'][1]
                 careers.is_working = index_data['is_working']
                 careers.company = index_data['company']
                 careers.position = index_data['position']
                 careers.save()
 
+                for element in index_data['result']:
+                    results = Result.objects.get(id=element['id'])
+                    results.title = element['title']
+                    results.content = element['content']
+                    results.start_year = element['start'][0]
+                    results.start_month = element['start'][1]
+                    results.end_year = element['end'][0]
+                    results.end_month = element['end'][1]
+                    results.end = element['end']
+                    results.save()
+
         elif category == 'award':
             for index_data in data:
                 awards = Award.objects.get(id=index_data['id'])
-                awards.is_working = index_data['is_working']
-                awards.date = index_data['date']
+                awards.date_year = index_data['date'][0]
+                awards.date_month = index_data['date'][1]
                 awards.name = index_data['name']
                 awards.content = index_data['content']
                 awards.save()
+
+        elif category == 'education':
+            for index_data in data:
+                educations = Education.objects.get(id=index_data['id'])
+                educations.start_year = index_data['start'][0]
+                educations.start_month = index_data['start'][1]
+                educations.end_year = index_data['end'][0]
+                educations.end_month = index_data['end'][1]
+                educations.end = index_data['end']
+                educations.is_working = index_data['is_working']
+                educations.school = index_data['school']
+                educations.specialism = index_data['specialism']
+                educations.subject = index_data['subject']
+                educations.save()
 
         elif category == 'language':
             for index_data in data:
@@ -297,7 +434,31 @@ class ResumeDetailWriteView(View):
                 links = Link.objects.get(id=index_data['id'])
                 links.url = index_data['link']
 
-        return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        return HttpResponse(status=200)
+
+class CareerResultView(View):
+
+    @login_decorator
+    def get(self, request, main_career_id):
+
+        results = Result.objects.create()
+        results.career_id = main_career_id
+        results.save()
+
+        data={
+            'id':results.id,
+            'career_id':int(main_career_id)
+        }
+
+        return JsonResponse({'data':data}, status=200)
+
+    @login_decorator
+    def delete(self, request, main_career_id):
+
+        row = Result.objects.get(id=data['id'])
+        row.delete()
+
+        return HttpResponse(status=200)
 
 class CompanyLikedResumes(View):
     @login_decorator
