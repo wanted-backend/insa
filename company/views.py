@@ -9,10 +9,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
 from utils                  import login_decorator, login_check
-from user.models            import User, Matchup, Work_information, Matchup_skill, Want
+from user.models            import User, Matchup, Work_information, Matchup_skill, Want, Matchup_career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal)
+                                    Reading, Proposal, Category)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -202,12 +202,9 @@ def get_reward_currency(position_id):
 
             if position.country.id==4 or position.country.id==3 or position.country.id==6:
                 total_reward=reward+currency
-
                 return total_reward
-
             else:
                 total_reward=currency+reward
-
                 return total_reward
 
 class DetailView(View):
@@ -629,4 +626,45 @@ class ProposalView(View):
             } for interview in interviews
         ]
         return JsonResponse({'interview_proposal':data}, status=200)
+
+class MainFilter(View):
+    def get(self, request):
+        filter_list=[{
+            'country':[{
+            country.name:[city.name for city in country.city_set.all()] 
+            }for country in Country.objects.all()],
+            'career_level':[level.year for level in Matchup_career.objects.all()]
+        }]
+        
+        return JsonResponse({'filter_list':filter_list}, status=200)
+
+class TagView(View):
+    def get(self, request):
+        tag_list=[{
+            category.name:[tag.name for tag in category.tag_set.all()]
+        }for category in Category.objects.all()]
+        return JsonResponse({'tag_list':tag_list}, status=200)
+
+class TagSearch(View):
+    def get(self, request):
+        tag=request.GET.get('tag', None)
+        offset=int(request.GET.get('offset', 0))
+        limit=int(request.GET.get('limit', 20))
+
+        if tag==None:
+            return JsonResponse({'message':'INVALID_TAG_NAME'})
+
+        tag_search=Position.objects.filter(company__company_tag__tag__name=tag).order_by('-created_at')
+        search_list=[{
+            'id':position.id,
+            'image':position.company.image_set.first().image_url,
+            'name':position.name,
+            'company':position.company.name,
+            'city':position.city.name if position.city else None,
+            'country':position.country.name,
+            'total_reward':get_reward_currency(position.id)
+            }for position in tag_search[offset:limit]]
+
+        return JsonResponse({'position':search_list}, status=200)
+
 
