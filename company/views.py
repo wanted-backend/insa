@@ -9,10 +9,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
 from utils                  import login_decorator, login_check
-from user.models            import User, Matchup, Work_information, Matchup_skill, Want
+from user.models            import User, Matchup, Work_information, Matchup_skill, Want, Matchup_career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal , Network)
+                                    Reading, Proposal, Category , Network)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -146,7 +146,7 @@ class LikedMatchupResume(View):
                     status = True
                 )
                 Want.objects.create(
-                    user_id=matchup.user.id,
+                    user_id=matchup.resume.user.id,
                     company_id=company.id
                 )
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
@@ -161,16 +161,15 @@ class LikedMatchupList(View):
             company = Company.objects.get(user_id=user.id)
             likes = Like.objects.filter(company_id=company.id, status=True)
             for like in likes:
-                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=like.matchup.user.id)
                 data = [
                     {
-                        'id':like.user.id,
-                        'name':like.matchup.user.name,
+                        'id':like.matchup.resume.user.id,
+                        'name':like.matchup.resume.user.name,
                         'description':like.matchup.description,
                         'role':like.matchup.role.name,
                         'career':like.matchup.matchup_career.year,
-                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
-                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+                        'skills':list(Matchup_skill.objects.filter(matchup_id=like.matchup.id).values('id', 'skill')),
+                        'work_info':list(Work_information.objects.filter(matchup_id=like.matchup.id).values('id', 'name', 'start', 'end', 'is_working')),
                         'education':like.matchup.school,
                     }
                 ]
@@ -203,12 +202,9 @@ def get_reward_currency(position_id):
 
             if position.country.id==4 or position.country.id==3 or position.country.id==6:
                 total_reward=reward+currency
-
                 return total_reward
-
             else:
                 total_reward=currency+reward
-
                 return total_reward
 
 class DetailView(View):
@@ -509,18 +505,17 @@ class PositionMain(View):
         return self.filter_country(country, city, year, sort_by, position_filter)
 
     def get(self, request):
-        LIMIT=len(Position.objects.all())
         sort_by=request.GET.get('sort_by', 'latest')
         country=request.GET.get('country', '한국')
         city=request.GET.getlist('city', 'all')
-        year=int(request.GET.get('year',0))
-        limit=int(request.GET.get('limit', LIMIT))
+        year=int(request.GET.get('year', 0))
+        limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
-        keyword=request.GET.get('keyword', '디자이너')
-
+        keyword=request.GET.get('keyword', None)
+        
         position_filter=self.keyword_search(country, city, year, sort_by, keyword)
-
         position_list=[{
+            'id':position.id,
             'image':position.company.image_set.first().image_url,
             'name':position.name,
             'company':position.company.name,
@@ -687,4 +682,45 @@ class ProposalView(View):
             } for interview in interviews
         ]
         return JsonResponse({'interview_proposal':data}, status=200)
+
+class MainFilter(View):
+    def get(self, request):
+        filter_list=[{
+            'country':[{
+            country.name:[city.name for city in country.city_set.all()] 
+            }for country in Country.objects.all()],
+            'career_level':[level.year for level in Matchup_career.objects.all()]
+        }]
+        
+        return JsonResponse({'filter_list':filter_list}, status=200)
+
+class TagView(View):
+    def get(self, request):
+        tag_list=[{
+            category.name:[tag.name for tag in category.tag_set.all()]
+        }for category in Category.objects.all()]
+        return JsonResponse({'tag_list':tag_list}, status=200)
+
+class TagSearch(View):
+    def get(self, request):
+        tag=request.GET.get('tag', None)
+        offset=int(request.GET.get('offset', 0))
+        limit=int(request.GET.get('limit', 20))
+
+        if tag==None:
+            return JsonResponse({'message':'INVALID_TAG_NAME'})
+
+        tag_search=Position.objects.filter(company__company_tag__tag__name=tag).order_by('-created_at')
+        search_list=[{
+            'id':position.id,
+            'image':position.company.image_set.first().image_url,
+            'name':position.name,
+            'company':position.company.name,
+            'city':position.city.name if position.city else None,
+            'country':position.country.name,
+            'total_reward':get_reward_currency(position.id)
+            }for position in tag_search[offset:limit]]
+
+        return JsonResponse({'position':search_list}, status=200)
+
 

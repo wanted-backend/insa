@@ -47,13 +47,13 @@ class UserRegisterView(View):
 			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
-                    return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
+                    return JsonResponse({'MESSAGE':'영문자, 숫자, 특수문자 사용하여 6자 이상 입력해주세요.'}, status=401)
 
             User.objects.create(
                 email = data['email'],
                 name = data['name'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
-                agreement = data['agreement']
+                agreement = data['agreement'],
             )
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
@@ -67,7 +67,7 @@ class AdminRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-
+            print(data)
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -79,7 +79,7 @@ class AdminRegisterView(View):
 			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
-                    return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
+                    return JsonResponse({'MESSAGE':'영문자, 숫자, 특수문자 사용하여 6자 이상 입력해주세요.'}, status=401)
 
             User.objects.create(
                 name = data['name'],
@@ -89,6 +89,22 @@ class AdminRegisterView(View):
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
 			)
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class AdminExists(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            print(data)
+            user = User.objects.prefetch_related('company').get(email=data['email'])
+            if user.job_position or user.company:
+                return JsonResponse({'MESSAGE':'True'}, status=200)
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
+        except User.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
+        except User.company.RelatedObjectDoesNotExist:
+            return JsonResponse({'MESSAGE': 'False'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
@@ -113,6 +129,41 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+class Profile(View):
+    @login_decorator
+    def get(self, request):
+        user = User.objects.get(id=request.user.id)
+        data = [
+            {
+                'id':user.id,
+                'name':user.name,
+                'email':user.email,
+                'contact':user.contact,
+                'image':user.image_url
+            }
+        ]
+        return JsonResponse({'user_profile':data}, status=200)
+
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        user = User.objects.get(id=request.user.id)
+        user.name = data['name']
+        user.email = data['email']
+        user.contact = data['contact']
+        user.image_url = data['image']
+        user.save()
+        data = [
+            {
+                'id':user.id,
+                'name':user.name,
+                'email':user.email,
+                'contact':user.contact,
+                'image':user.image_url
+            }
+        ]
+        return JsonResponse({'user_profile':data}, status=200)
+
 class LikedCompanies(View):
 
     @login_decorator
@@ -120,6 +171,8 @@ class LikedCompanies(View):
         companies = Want.objects.filter(user_id=request.user.id)
         data = [
             {
+                'id':want.id,
+                'company_id':want.company.id,
                 'name':want.company.name,
                 'logo':want.company.image_url,
                 'date':want.created_at
@@ -441,19 +494,6 @@ class CareerResultView(View):
         row.delete()
 
         return HttpResponse(status=200)
-
-class CompanyLikedResumes(View):
-    @login_decorator
-    def get(self, request):
-        companies = Want.objects.filter(user_id=request.user.id)
-        data = [
-            {
-                'name':want.company.name,
-                'logo':want.company.image_url,
-                'date':want.created_at
-            } for want in companies
-        ]
-        return JsonResponse({'companies':data}, status=200)
 
 class CompanyRequestsResume(View):
     @login_decorator

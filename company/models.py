@@ -108,7 +108,7 @@ class Country(models.Model):
 class City(models.Model):
 
     country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=150)
 
     class Meta:
         db_table = 'cities'
