@@ -96,10 +96,11 @@ class Workplace(models.Model):
 class Country(models.Model):
 
     name = models.CharField(max_length=100)
-    number = models.CharField(max_length=30)
-    code = models.CharField(max_length=20)
-    currency = models.CharField(max_length=10)
+    number = models.CharField(max_length=30, null=True)
+    currency = models.CharField(max_length=10, null=True)
     english_currency = models.CharField(max_length=10)
+    exchange_rate = models.FloatField()
+    tenthousand_unit = models.CharField(max_length=10, null=True)
 
     class Meta:
         db_table = 'countries'
@@ -133,13 +134,15 @@ class Position(models.Model):
     benefit = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    referrer = models.CharField(max_length=50)
-    volunteer = models.CharField(max_length=50)
-    total = models.CharField(max_length=150)
+    referrer = models.IntegerField()
+    volunteer = models.IntegerField()
+    total = models.IntegerField()
     position_items = models.ManyToManyField('Item', through='Position_item', related_name='position_items')
     position_workplaces = models.ManyToManyField('Workplace', through='Position_workplace', related_name='position_workplaces')
     position_volunteers = models.ManyToManyField('user.User', through='Volunteers', related_name='position_volunteers')
     bookmarks = models.ManyToManyField('user.User', through='Bookmark')
+    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
+    city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
 
     class Meta:
         db_table = 'positions'
@@ -192,13 +195,13 @@ class Position_item(models.Model):
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True)
     expiration = models.ForeignKey('Expiration', on_delete=models.SET_NULL, null=True)
-    period = models.IntegerField(default=0)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
-    used_at = models.DateTimeField(auto_now_add=False, null=True)
-    image_url = models.URLField(max_length=2000)
-    title = models.CharField(max_length=50)
-    description = models.CharField(max_length=100)
-    click = models.IntegerField(default=0)
+    image_url = models.URLField(max_length=2000, null=True)
+    title = models.CharField(max_length=50, null=True)
+    description = models.CharField(max_length=100, null=True)
+    click = models.IntegerField(default=0, null=True)
 
     class Meta:
         db_table = 'positions_items'
@@ -217,7 +220,7 @@ class Network(models.Model):
 class Volunteers(models.Model):
 
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
-    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True, related_name='volunteers')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=1)
 
@@ -264,7 +267,6 @@ class Reading(models.Model):
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
     matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
     read = models.BooleanField(default=0)
-    interview = models.BooleanField(default=0)
 
     class Meta:
         db_table = 'readings'
@@ -289,3 +291,18 @@ class Company_matchup_item(models.Model):
 
     class Meta:
         db_table = 'companies_matchup_items'
+
+class Proposal(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
+    matchup = models.ForeignKey('user.Matchup', on_delete=models.SET_NULL, null=True)
+    position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
+    content = models.TextField()
+    title = models.CharField(max_length=100)
+    start = models.IntegerField(default=0)
+    end = models.IntegerField(default=0)
+    place = models.CharField(max_length=200)
+    stock = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'proposals'

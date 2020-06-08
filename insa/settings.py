@@ -29,8 +29,7 @@ SECRET_KEY = config.SECRET['SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*','192.168.219.108','192.168.219.108:8000']
-
+ALLOWED_HOSTS = ['*','','']
 
 # Application definition
 
@@ -152,3 +151,34 @@ CORS_ALLOW_HEADERS = (
 )
 
 APPEND_SLASH = False
+
+LOGGING = {
+     'disable_existing_loggers': False,
+     'version': 1,
+     'formatters': {
+          'verbose': {
+             'format': '{asctime} {levelname} {message}',
+             'style': '{'
+         },
+     },
+     'handlers': {
+         'console': {
+             'class'     : 'logging.StreamHandler',
+             'formatter' : 'verbose',
+             'level'     : 'DEBUG',
+         },
+         'file': {
+             'level'     : 'DEBUG',
+             'class'     : 'logging.FileHandler',
+             'formatter' : 'verbose',
+             'filename'  : 'debug.log',
+         },
+     },
+     'loggers': {
+         'django.db.backends': {
+             'handlers' : ['console','file'],
+             'level'    : 'DEBUG',
+             'propagate': False,
+         },
+     },
+   }

@@ -4,13 +4,15 @@ import datetime
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
-from django.db.models       import Q
+from django.db.models       import Q, Count, F
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils           import timezone
 
 from utils                  import login_decorator, login_check
-from company.models         import Company, City, Foundation_year, Employee, Industry, Workplace, Position, \
-                                Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like
 from user.models            import User, Matchup, Work_information, Matchup_skill, Want
+from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
+                                    Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
+                                    Reading, Proposal)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -176,7 +178,7 @@ class LikedMatchupList(View):
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
-class UnreadMatchup(View):
+class MatchupList(View):
     @login_decorator
     def get(self, request):
         matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set')
@@ -192,13 +194,27 @@ class UnreadMatchup(View):
                 'education':match.school
             } for match in matchup
         ]
-        return JsonResponse({'unlead_matchup':data}, status=200)
+        return JsonResponse({'matchup_list':data}, status=200)
+
+def get_reward_currency(position_id):
+            position=Position.objects.get(id=position_id)
+            currency=position.country.english_currency
+            reward=format(position.total, ',')
+
+            if position.country.id==4 or position.country.id==3 or position.country.id==6:
+                total_reward=reward+currency
+
+                return total_reward
+
+            else:
+                total_reward=currency+reward
+
+                return total_reward
 
 class DetailView(View):
     @login_check
     def get(self, request, position_id):
         RECOMENDATION_LIMIT=8
-
         try:
             user_id=request.user.id
         except:
@@ -207,16 +223,17 @@ class DetailView(View):
         position = Position.objects.select_related('company', 'role').prefetch_related('position_workplace_set').get(id=position_id)
         workplace =  position.position_workplace_set.get().workplace
         position_list = [{
+            'id':position_id,
             'detail_images':[image.image_url for image in position.company.image_set.all()],
             'name':position.name,
             'company':position.company.name,
-            'city':workplace.city.name if workplace.city else None,
-            'country':workplace.country.name,
+            'city':position.city.name if position.city else None,
+            'country':position.country.name,
             'tag':[tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
             'bookmark':Bookmark.objects.filter(Q(user_id=user_id) & Q(position_id=position_id)).exists(),
             'reward' :{
-                'referrer':position.referrer,
-                'volunteer':position.volunteer,
+                'referrer':get_reward_currency(position.id),
+                'volunteer':get_reward_currency(position.id)
             },
             'body':{
                 'description':position.description,
@@ -243,12 +260,12 @@ class DetailView(View):
             },
             'recommendation':[{
                 'id':item.id,
-                'image':item.company.image_set.all().first().image_url,
+                'image':item.company.image_set.first().image_url,
                 'name':item.name,
                 'company':item.company.name,
-                'location':item.position_workplace_set.get().workplace.city.name if item.position_workplace_set.get().workplace.city else None,
-                'country':item.position_workplace_set.get().workplace.country.name,
-                'reward':item.total
+                'city':item.city.name if item.city else None,
+                'country':item.country.name,
+                'reward':get_reward_currency(position.id)
                 }for item in Position.objects.order_by('?') if item.role.job_category_id==position.role.job_category_id][:RECOMENDATION_LIMIT]
             }]
         return JsonResponse({'position':position_list}, status=200)
@@ -260,6 +277,7 @@ class PositionBookmarkView(View):
             if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
                 Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
                 return HttpResponse(status=200)
+
             Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
             return HttpResponse(status=200)
 
@@ -270,8 +288,8 @@ class PositionApplyView(View):
     @login_decorator
     def get(self, request, position_id):
         user_id=request.user.id
-
         user=User.objects.prefetch_related('resume_set').filter(user_id=user_id)
+
         apply_info:{
             'name':user.name,
             'email':user.email,
@@ -300,11 +318,11 @@ class ThemeTop(View):
         themes = Theme.objects.get(id=theme_id)
 
         themetop = {
-			"theme_title"             : themes.title,
+            "theme_title"             : themes.title,
             "theme_description"       : themes.description,
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
-		}
+        }
 
         return JsonResponse({"theme_top" : themetop},status=200)
 
@@ -317,65 +335,302 @@ class ThemeList(View):
         themes = Position.objects.filter(theme_id=theme_id)
 
         themelist = [{
-            "item_id"       : position.id,
-            "item_image"    : Image.objects.filter(company_id=position.company.id)[0].image_url,
-			"item_title"    : position.name,
-            "item_company"  : position.company.name,
-            "item_location" : Workplace.objects.filter(company_id=position.company.id)[0].city.name,
-            "item_country"  : Workplace.objects.filter(company_id=position.company.id)[0].city.country.name,
-            "item_reward"   : position.total
+            "id"       : position.id,
+            "image"    : position.company.image_set.all().first().image_url,
+            "name"     : position.name,
+            "company"  : position.company.name,
+            "city"     : position.position_workplace_set.get().workplace.city.name,
+            "country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "reward"   : position.total
 		} for position in themes[offset:offset + limit-1]]
 
         return JsonResponse({"theme_list":themelist},status=200)
 
 class HomeView(View):
 
+    # @login_check
+    def get(self,request):
+
+        # user = request.user
+        # roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
+        # mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
+        themes = Theme.objects.prefetch_related('position_set').all()
+
+        # user_recomended_position = [{
+        #     "id"       : position.id,
+        #     "image"    : position.company.image_set.all().first().image_url,
+        #     "name"     : position.name,
+        #     "company"  : position.company.name,
+        #     "city"     : position.position_workplace_set.get().workplace.city.name,
+        #     "country"  : position.position_workplace_set.get().workplace.city.country.name,
+        #     "reward"   : position.total,
+        # }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+
+        new_employment = [{
+            "id"       : position.id,
+            "image"    : position.company.image_set.all().first().image_url,
+            "name"     : position.name,
+            "company"  : position.company.name,
+            "city"     : position.position_workplace_set.get().workplace.city.name,
+            "country"  : position.position_workplace_set.get().workplace.city.country.name,
+            "reward"   : position.total,
+        }for position in Position.objects.order_by('created_at')[:4]]
+
+        theme_list = [{
+            "image"    : theme.image_url,
+            "title"    : theme.title,
+            "desc"     : theme.description,
+            "logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
+        }for theme in themes[:4]]
+
+        recommendations_of_the_week = [{
+            "image"    : recommend.company.image_set.all().first().image_url,
+            "name"     : recommend.name,
+            "company"  : recommend.company.name,
+            "city"     : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
+            "country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
+            "reward"   : recommend.total,
+        }for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
+
+        return JsonResponse({"position_recommend"  : None,#user_recomended_position,
+                             "new_employment"      : new_employment,
+                             "theme_list"          : theme_list,
+                             "Recommendation_week" : recommendations_of_the_week,
+                            },status=200)
+
+class RequestResume(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'matchup_id' in data:
+                matchup_id = data['matchup_id']
+                matchup = Matchup.objects.get(id=matchup_id)
+                company = Company.objects.get(user_id=request.user.id)
+                if matchup.resume.is_matchup == True:
+                    if Company_matchup.objects.filter(company_id=company.id, matchup_id=matchup_id, status=True).exists():
+                        return JsonResponse({'MESSAGE':'이미 요청됨'}, status=401)
+                    Company_matchup.objects.create(
+                        company_id=company.id,
+                        matchup_id=matchup_id,
+                        status = True
+                    )
+                    return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+                return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class RequestMatchupList(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            requests = Company_matchup.objects.filter(company_id=company.id, status=True)
+            for request in requests:
+                matchup = Matchup.objects.prefetch_related('matchup_skill_set','work_information_set').get(user_id=request.matchup.user.id)
+                data = [
+                    {
+                        'id':request.id,
+                        'name':request.matchup.user.name,
+                        'description':request.matchup.description,
+                        'role':request.matchup.role.name,
+                        'career':request.matchup.matchup_career.year,
+                        'work_info':[{work.name:[work.start, work.end]} for work in matchup.work_information_set.filter(matchup_id=matchup.id)],
+                        'work_skills':[work.skill for work in matchup.matchup_skill_set.filter(matchup_id=matchup.id)],
+                        'education':request.matchup.school,
+                    }
+                ]
+                return JsonResponse({'is_resume_request':data}, status=200)
+        except ValueError:
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+
+class PositionAdvertisement(View):
+    def get(self, request):
+        advertisement=[{
+            'id':position.position.id,
+            'image':position.position.company.image_set.first().image_url,
+            'company_logo':position.position.company.image_url,
+            'name':position.position.name,
+            'company':position.position.company.name,
+            'location': position.position.city.name if position.position.city else None,
+            'country':position.position.country.name,
+            'total_reward':get_reward_currency(position.position.id)
+        }for position in Position_item.objects.select_related('position').filter(
+                                                                            Q(start_date__lt=timezone.now()) &
+                                                                            Q(end_date__gt=timezone.now()) &
+                                                                            Q(item_id=1)
+                                                                            )]
+
+        return JsonResponse({'advertisement':advertisement}, status=200)
+
+class PositionMain(View):
+    def keyword_search(self, position_filter, keyword):
+        keyword_list = keyword.split(' ')
+
+        keyword_filter = Q()
+        for keyword in keyword_list:
+            keyword_filter.add(Q(name__icontains=keyword), Q.OR)
+            keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
+
+        position_filter = position_filter.filter(keyword_filter).distinct()
+        return position_filter
+
+    def sort_position(self, sort_by, year_filter, keyword):
+        sort={
+            'latest':year_filter.order_by('-created_at'),
+            'popularity':year_filter.annotate(count=Count('volunteers')).order_by('-count'),
+            'compensation':year_filter.order_by(F('total')*F('country__exchange_rate'))
+        }
+        for key in sort:
+            if sort_by==key:
+                position_filter=sort[key]
+                if keyword!=None:
+                    return self.keyword_search(position_filter, keyword)
+                else:
+                    return position_filter
+
+
+    def filter_year(self, year, sort_by, city_filter, keyword):
+        if year==0:
+            year_filter=city_filter.filter(entry=True)
+        elif year!=-1:
+            year_filter=city_filter.filter(Q(min_level__gte=year) & Q(max_level__lte=year))
+        return self.sort_position(sort_by, year_filter, keyword)
+
+    def filter_city(self, city, year, sort_by, country_filter, keyword):
+        if city=='all':
+            city_filter=country_filter
+        else:
+            city_filter=country_filter.filter(city__name__in=city)
+        return self.filter_year(year, sort_by, city_filter, keyword)
+
+    def filter_country(self, country, city, year, sort_by, keyword):
+        if country=='all':
+            country_filter=Position.objects.all()
+        else:
+            country_filter=Position.objects.filter(country__name=country)
+        return self.filter_city(city, year, sort_by, country_filter, keyword)
+
+    def get(self, request):
+        LIMIT=len(Position.objects.all())
+        sort_by=request.GET.get('sort_by', 'latest')
+        country=request.GET.get('country', '한국')
+        city=request.GET.getlist('city', 'all')
+        year=int(request.GET.get('year',0))
+        limit=int(request.GET.get('limit', LIMIT))
+        offset=int(request.GET.get('offset', 0))
+        keyword=request.GET.get('keyword', '디자이너')
+
+        position_filter=self.filter_country(country, city, year, sort_by, keyword)
+
+        position_list=[{
+            'image':position.company.image_set.first().image_url,
+            'name':position.name,
+            'company':position.company.name,
+            'city':position.city.name if position.city else None,
+            'country':position.country.name,
+            'total_reward':get_reward_currency(position.id),
+            }for position in position_filter[offset:limit]]
+
+        return JsonResponse({'position':position_list}, status=200)
+
+class JobAd(View):
+
     @login_check
     def get(self,request):
 
         user = request.user
-        roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
-        mathced_position = Position.objects.filter(role_id=roles.role_id) if roles != None else None
-        themes = Theme.objects.prefetch_related('position_set').all()
+        company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
+        # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
+        positions = [{
+            "id"      : position.id,
+            "name"    : position.name,
+            "image"   : position.company.image_set.all().first().image_url,
+            "city"    : position.position_workplace_set.get().workplace.city.name if position.position_workplace_set.get().workplace.city else None,
+            "country" : position.position_workplace_set.get().workplace.country.name,
+            "reward"  : position.total
+        }for position in company_positions]
 
-        user_recomended_position = [{
-			"item_id"       : position.id,
-            "item_image"    : position.company.image_set.all().first().image_url,
-            "item_name"     : position.name,
-            "item_company"  : position.company.name,
-            "item_location" : position.position_workplace_set.get().workplace.city.name,
-            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "item_reward"   : position.total,
-		}for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else None
+        return JsonResponse({"positions" : positions},status=200)
 
-        new_employment = [{
-			"item_id"       : position.id,
-            "item_image"    : position.company.image_set.all().first().image_url,
-            "item_name"     : position.name,
-            "itme_company"  : position.company.name,
-            "item_location" : position.position_workplace_set.get().workplace.city.name,
-            "item_country"  : position.position_workplace_set.get().workplace.city.country.name,
-            "item_reward"   : position.total,
-		}for position in Position.objects.order_by('created_at')[:4]]
+class ReadingMatchup(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'matchup_id' in data:
+                matchup_id = data['matchup_id']
+                matchup = Matchup.objects.get(id=matchup_id)
+                company = Company.objects.get(user_id=request.user.id)
+                if Reading.objects.filter(company_id=company.id, matchup_id=matchup_id, read=True).exists():
+                    return JsonResponse({'MESSAGE':'열람한 이력서'}, status=401)
+                Reading.objects.create(
+                    company_id=company.id,
+                    matchup_id=matchup.id,
+                    read=True,
+                    interview=False
+                )
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-        theme_list = [{
-            "item_image"    : theme.image_url,
-            "item_title"    : theme.title,
-            "item_desc"     : theme.description,
-            "item_logos"    : list(set([logos.company.image_url for logos in theme.position_set.all()]))
-		}for theme in themes[:4]]
+class ReadingMatchupList(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            reading = Reading.objects.prefetch_related('matchup').filter(company_id=company.id)
+            data = [
+                {
+                    'id':read.id,
+                    'name':read.matchup.user.name,
+                    'description':read.matchup.description,
+                    'role':read.matchup.role.name,
+                    'career':read.matchup.matchup_career.year,
+                    'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=read.matchup.id)],
+                    'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=read.matchup.id)],
+                    'education':read.matchup.school,
+                } for read in reading
+            ]
+            return JsonResponse({'reading_matchup':data}, status=200)
+        except ValueError:
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
-        recommendations_of_the_week = [{
-            "item_image"    : recommend.company.image_set.all().first().image_url,
-            "item_name"     : recommend.name,
-            "item_company"  : recommend.company.name,
-            "item_location" : recommend.position_workplace_set.get().workplace.city.name if recommend.position_workplace_set.get().workplace.city else None,
-            "item_country"  : recommend.position_workplace_set.get().workplace.city.country.name if recommend.position_workplace_set.get().workplace.city else None,
-            "item_reward"   : recommend.total,
-		}for recommend in Position.objects.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
+class ProposalView(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            Proposal.objects.create(
+                company_id = Company.objects.get(user_id=request.user.id).id,
+                matchup_id = Matchup.objects.get(id=data['matchup_id']).id,
+                position_id = Position.objects.get(id=data['position_id']).id,
+                content = data['content'],
+                title = data['title'],
+                start = data['start'],
+                end = data['end'],
+                place = data['place'],
+                stock = data['stock']
+            )
 
-        return JsonResponse({"position_recommend"  : user_recomended_position,
-                             "new_employment"      : new_employment,
-                             "theme_list"          : theme_list,
-                             "Recommendation_week" : recommendations_of_the_week
-                            },status=200)
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+    @login_decorator
+    def get(self, request):
+        interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
+        data = [
+            {
+                'id':interview.id,
+                'name':interview.matchup.user.name,
+                'description':interview.matchup.description,
+                'role':interview.matchup.role.name,
+                'career':interview.matchup.matchup_career.year,
+                'work_info':[{work.name:[work.start, work.end]} for work in Work_information.objects.filter(matchup_id=interview.matchup.id)],
+                'work_skills':[work.skill for work in Matchup_skill.objects.filter(matchup_id=interview.matchup.id)],
+                'education':interview.matchup.school
+            } for interview in interviews
+        ]
+        return JsonResponse({'interview_proposal':data}, status=200)
+

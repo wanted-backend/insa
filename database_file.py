@@ -12,7 +12,7 @@ print("BASE_DIR=", end=""), print(BASE_DIR)
 sys.path.append(BASE_DIR)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "insa.settings")
-django.setup(	)
+django.setup()
 
 from company.models import *
 from user.models import *
@@ -76,7 +76,9 @@ with open(CSV_PATH, newline='') as csvfile:
             name = row['name'],
             number = row['number'],
             currency = row['currency'],
-            english_currency = row['english_currency']
+            english_currency = row['english_currency'],
+            exchange_rate = row['exchange_rate'],
+            tenthousand_unit = row['tenthousand_unit']
         )
         print(row)
 
@@ -249,7 +251,7 @@ with open(CSV_PATH, newline='') as csvfile:
         expiry_date = None if row['expiry_date'] == '' else row['expiry_date']
         preferred = None if row['preferred'] == '' else row['preferred']
         themes_id = None if row['themes_id'] == '' else Theme.objects.get(id=row['themes_id'])
-
+        cities_id = None if row['cities_id'] == '' else City.objects.get(id=row['cities_id'])
         Position.objects.create(
             company = Company.objects.get(id=row['companies_id']),
             theme = themes_id,
@@ -271,7 +273,9 @@ with open(CSV_PATH, newline='') as csvfile:
             updated_at = row['updated_at'],
             referrer = row['referrer'],
             volunteer = row['volunteer'],
-            total = row['total']
+            total = row['total'],
+            country = Country.objects.get(id=row['countries_id']),
+            city = cities_id
         )
         print(row)
 

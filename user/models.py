@@ -23,7 +23,7 @@ class Security(models.Model):
 
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
     user_ip = models.CharField(max_length=100)
-    browser = models.CharField(max_length=100)
+    browser = models.CharField(max_length=1000)
     date = models.DateField(auto_now=True)
 
     class Meta:

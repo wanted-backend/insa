@@ -10,14 +10,15 @@ from partial_date       import PartialDateField
 from datetime           import datetime
 
 from utils              import login_decorator
-from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want
-
 from insa.settings      import SECRET_KEY
-from utils              import login_decorator, login_check
+from company.models     import Company, Company_matchup, Proposal
+from .models            import User, Security, Resume, Career, Result, Education, Award, Language,\
+                                Test, Link, Level, Linguistic, Resume_file, Want, Matchup
 
 class UserEmailExists(View):
     def post(self, request):
         data = json.loads(request.body)
+        print(data)
         try:
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'True'}, status=200)
@@ -27,45 +28,55 @@ class UserEmailExists(View):
 
 class UserRegisterView(View):
     validation = {
-        'password': lambda password: re.match('\w{6,15}', password)
-    }
+		'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
+	}
 
     def post(self, request):
         try:
             data = json.loads(request.body)
-	    # 빈 문자열 검사
+            print(data)
+
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
+
+			# 빈 문자열 검사
             for value in data.values():
                 if value == '':
                     return JsonResponse({'MESSAGE':'입력 정보를 확인해주세요'}, status=401)
-            # 비밀번호 숫자, 영문 조합으로 6자리 이상인지 검증(특수문자는 선택)
+
+			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
                     return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
 
-                User.objects.create(
+            User.objects.create(
                 email = data['email'],
                 name = data['name'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
                 agreement = data['agreement']
-	    )
+            )
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
 class AdminRegisterView(View):
     validation = {
-        'password': lambda password: re.match('\w{6,15}', password)
+        'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
     }
 
     def post(self, request):
         try:
             data = json.loads(request.body)
-            # 빈 문자열 검사
+
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
+
+			# 빈 문자열 검사
             for value in data.values():
                 if value == '':
                     return JsonResponse({'MESSAGE':'입력 정보를 확인해주세요'}, status=401)
-	    # 비밀번호 숫자, 영문 조합으로 6자리 이상인지 검증(특수문자는 선택)
+
+			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
                     return JsonResponse({'MESSAGE':'영문자, 숫자만 사용하여 6자 이상 입력해주세요.'}, status=401)
@@ -76,9 +87,8 @@ class AdminRegisterView(View):
                 contact = data['contact'],
                 email = data['email'],
                 password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode(),
-	    )
+			)
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
@@ -89,18 +99,17 @@ class LogInView(View):
             if User.objects.filter(email=data['email']).exists():
                 user = User.objects.get(email=data['email'])
 
-            if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
-                token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
+                if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
+                    token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
 
-                Security.objects.create(
-                    user_id = user.id,
-                    user_ip = request.META['REMOTE_ADDR'],
-                    browser = request.META['HTTP_USER_AGENT'],
-                    date = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
-                )
-                return JsonResponse({'token': token.decode('utf-8')}, status=200)
-            return HttpResponse(status=401)
-
+                    Security.objects.create(
+                        user_id = user.id,
+                        user_ip = request.META['REMOTE_ADDR'],
+                        browser = request.META['HTTP_USER_AGENT'],
+                        date = datetime.today().strftime("%Y/%m/%d %H:%M:%S")
+                    )
+                    return JsonResponse({'token': token.decode('utf-8')}, status=200)
+                return JsonResponse({'MESSAGE':'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
@@ -433,3 +442,43 @@ class CareerResultView(View):
 
         return HttpResponse(status=200)
 
+class CompanyLikedResumes(View):
+    @login_decorator
+    def get(self, request):
+        companies = Want.objects.filter(user_id=request.user.id)
+        data = [
+            {
+                'name':want.company.name,
+                'logo':want.company.image_url,
+                'date':want.created_at
+            } for want in companies
+        ]
+        return JsonResponse({'companies':data}, status=200)
+
+class CompanyRequestsResume(View):
+    @login_decorator
+    def get(self, request):
+        matchup = Matchup.objects.get(user_id=request.user.id)
+        requests_resume = Company_matchup.objects.filter(matchup_id=matchup.id)
+        data = [
+            {
+                'name':request.company.name,
+                'logo':request.company.image_url,
+                'date':request.created_at
+            } for request in requests_resume
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)
+
+class CompanyInterviewResume(View):
+    @login_decorator
+    def get(self, request):
+        matchup = Matchup.objects.get(user_id=request.user.id)
+        interviews = Proposal.objects.filter(matchup_id=matchup.id)
+        data = [
+            {
+                'name':interview.company.name,
+                'logo':interview.company.image_url,
+                'date':interview.created_at
+            } for interview in interviews
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)
