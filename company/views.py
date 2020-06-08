@@ -508,18 +508,17 @@ class PositionMain(View):
         return self.filter_country(country, city, year, sort_by, position_filter)
 
     def get(self, request):
-        LIMIT=len(Position.objects.all())
         sort_by=request.GET.get('sort_by', 'latest')
         country=request.GET.get('country', '한국')
         city=request.GET.getlist('city', 'all')
-        year=int(request.GET.get('year',0))
-        limit=int(request.GET.get('limit', LIMIT))
+        year=int(request.GET.get('year', 0))
+        limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
-        keyword=request.GET.get('keyword', '디자이너')
-
+        keyword=request.GET.get('keyword', None)
+        
         position_filter=self.keyword_search(country, city, year, sort_by, keyword)
-
         position_list=[{
+            'id':position.id,
             'image':position.company.image_set.first().image_url,
             'name':position.name,
             'company':position.company.name,
@@ -551,11 +550,6 @@ class JobAd(View):
             return JsonResponse({"message":None},status=200)
         return JsonResponse({"positions" : positions},status=200)
     
-    # def post(self,request):
-        
-        
-        
-        
 class ReadingMatchup(View):
     @login_decorator
     def post(self, request):
