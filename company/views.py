@@ -12,7 +12,7 @@ from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item)
+                                    Reading, Proposal, Category , Network , Position_item , Matchup_item)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -619,7 +619,24 @@ class NetworkAd(View):
         except:
             return JsonResponse({"message" : "회사이름이나 이메일이 올바른지 확인해주세요"},status=400)
         return HttpResponse(status=200)
+
+class MatchUpItem(View):
     
+    @login_decorator
+    def get(self,request):
+        
+        item = Matchup_item.objects.all()
+        
+        plans = [{
+            "name"             : plan.name,
+            "displayed_amount" : plan.displayed_amount,
+            "price_amount"     : plan.price_amount,
+            "count"            : plan.count,
+            "days"             : plan.days,
+        }for plan in item]
+        
+        return JsonResponse({"plans" : plans} , status=200)
+        
 # class ReadingMatchup(View):
 #     @login_decorator
 #     def post(self, request):
