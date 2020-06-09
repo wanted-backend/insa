@@ -11,10 +11,8 @@ from datetime           import datetime
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Company, Company_matchup, Proposal, Job_category, Role, Country
-from .models            import User, Security, Resume, Career, Result, Education, Award, Language,\
-                                Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career,\
-                                Job_text, Resume_role, Matchup_skill, Matchup_job
+from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country
+from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
 
 class UserEmailExists(View):
     def post(self, request):
@@ -206,7 +204,6 @@ class ResumeView(View):
         resume.user_id = user.id
         resume.status = True
         resume.save()
-
 
         print(resume.id)
 
@@ -674,7 +671,6 @@ class UserGlobalView(View):
 
         return JsonResponse({'data':list(country)}, status=200)
 
-
 class MatchUpRegistrationView(View):
     @login_decorator
     def post(self, request):
@@ -697,19 +693,29 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
+def get_reward_currency(position_id):
+            position=Position.objects.get(id=position_id)
+            currency=position.country.english_currency
+            reward=format(position.total, ',')
 
+            if position.country.id==3 or position.country.id==4 or position.country.id==6:
+                total_reward=reward+currency
+                return total_reward
+            else:
+                total_reward=currency+reward
+                return total_reward
 
+class UserBookmark(View):
+    @login_decorator
+    def get(self, request):
+        position_list=Position.objects.filter(bookmark__user_id=request.user.id)
+        is_bookmarked=[{
+            'image':position.company.image_set.first().image_url,
+            'name':position.name,
+            'company':position.company.name,
+            'country':position.country.name,
+            'city':position.city.name if position.city else None,
+            'reward':get_reward_currency(position.id)
+        }for position in position_list]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return JsonResponse({'bookmark':is_bookmarked}, status=200)

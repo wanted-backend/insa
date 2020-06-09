@@ -198,7 +198,7 @@ def get_reward_currency(position_id):
             currency=position.country.english_currency
             reward=format(position.total, ',')
 
-            if position.country.id==4 or position.country.id==3 or position.country.id==6:
+            if position.country.id==3 or position.country.id==4 or position.country.id==6:
                 total_reward=reward+currency
                 return total_reward
             else:
@@ -266,7 +266,7 @@ class DetailView(View):
 
 class PositionBookmarkView(View):
     @login_decorator
-    def post(self, request, position_id):
+    def get(self, request, position_id):
         try:
             if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
                 Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
@@ -506,7 +506,7 @@ class PositionMain(View):
         sort_by=request.GET.get('sort_by', 'latest')
         country=request.GET.get('country', '한국')
         city=request.GET.getlist('city', 'all')
-        year=int(request.GET.get('year', 0))
+        year=int(request.GET.get('year', -1))
         limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
         keyword=request.GET.get('keyword', None)
@@ -520,7 +520,7 @@ class PositionMain(View):
             'city':position.city.name if position.city else None,
             'country':position.country.name,
             'total_reward':get_reward_currency(position.id),
-            }for position in position_filter[offset:limit]]
+            }for position in position_filter[offset:offset+limit]]
 
         return JsonResponse({'position':position_list}, status=200)
 
@@ -683,14 +683,13 @@ class Purchased(View):
 
 class MainFilter(View):
     def get(self, request):
-        filter_list=[{
-            'country':[{
+        country=[{
             country.name:[city.name for city in country.city_set.all()] 
             }for country in Country.objects.all()],
-            'career_level':[level.year for level in Matchup_career.objects.all()]
-        }]
+        career_level=[level.year for level in Matchup_career.objects.all()]
         
-        return JsonResponse({'filter_list':filter_list}, status=200)
+        
+        return JsonResponse({'country':country, 'career':career_level}, status=200)
 
 class TagView(View):
     def get(self, request):
@@ -717,6 +716,6 @@ class TagSearch(View):
             'city':position.city.name if position.city else None,
             'country':position.country.name,
             'total_reward':get_reward_currency(position.id)
-            }for position in tag_search[offset:limit]]
+            }for position in tag_search[offset:offset+limit]]
 
         return JsonResponse({'position':search_list}, status=200)
