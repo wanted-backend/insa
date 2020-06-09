@@ -128,41 +128,6 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
-class Profile(View):
-    @login_decorator
-    def get(self, request):
-        user = User.objects.get(id=request.user.id)
-        data = [
-            {
-                'id':user.id,
-                'name':user.name,
-                'email':user.email,
-                'contact':user.contact,
-                'image':user.image_url
-            }
-        ]
-        return JsonResponse({'user_profile':data}, status=200)
-
-    @login_decorator
-    def post(self, request):
-        data = json.loads(request.body)
-        user = User.objects.get(id=request.user.id)
-        user.name = data['name']
-        user.email = data['email']
-        user.contact = data['contact']
-        user.image_url = data['image']
-        user.save()
-        data = [
-            {
-                'id':user.id,
-                'name':user.name,
-                'email':user.email,
-                'contact':user.contact,
-                'image':user.image_url
-            }
-        ]
-        return JsonResponse({'user_profile':data}, status=200)
-
 class LikedCompanies(View):
 
     @login_decorator
@@ -493,33 +458,19 @@ class CareerResultView(View):
 
         return HttpResponse(status=200)
 
-# class CompanyRequestsResume(View):
-#     @login_decorator
-#     def get(self, request):
-#         matchup = Matchup.objects.get(user_id=request.user.id)
-#         requests_resume = Company_matchup.objects.filter(matchup_id=matchup.id)
-#         data = [
-#             {
-#                 'name':request.company.name,
-#                 'logo':request.company.image_url,
-#                 'date':request.created_at
-#             } for request in requests_resume
-#         ]
-#         return JsonResponse({'is_resume_request':data}, status=200)
-
-# class CompanyInterviewResume(View):
-#     @login_decorator
-#     def get(self, request):
-#         matchup = Matchup.objects.get(user_id=request.user.id)
-#         interviews = Proposal.objects.filter(matchup_id=matchup.id)
-#         data = [
-#             {
-#                 'name':interview.company.name,
-#                 'logo':interview.company.image_url,
-#                 'date':interview.created_at
-#             } for interview in interviews
-#         ]
-#         return JsonResponse({'is_resume_request':data}, status=200)
+class CompanyInterviewResume(View):
+    @login_decorator
+    def get(self, request):
+        resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+        interviews = Proposal.objects.filter(resume_id=resume.id)
+        data = [
+            {
+                'name':interview.company.name,
+                'logo':interview.company.image_url,
+                'date':interview.created_at
+            } for interview in interviews
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)
 
 class UserMatchUpView(View):
     @login_decorator
@@ -538,6 +489,20 @@ class UserMatchUpView(View):
             year.append(years)
 
         return JsonResponse({'speclist':speclist,'year':year}, status=200)
+
+class CompanyRequestsResume(View):
+    @login_decorator
+    def get(self, request):
+        resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+        requests_resume = Company_matchup.objects.filter(resume_id=resume.id)
+        data = [
+            {
+                'name':request.company.name,
+                'logo':request.company.image_url,
+                'date':request.created_at
+            } for request in requests_resume
+        ]
+        return JsonResponse({'is_resume_request':data}, status=200)
 
     @login_decorator
     def post(self, request):
@@ -693,17 +658,17 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-def get_reward_currency(position_id):
-            position=Position.objects.get(id=position_id)
-            currency=position.country.english_currency
-            reward=format(position.total, ',')
+    def get_reward_currency(position_id):
+        position=Position.objects.get(id=position_id)
+        currency=position.country.english_currency
+        reward=format(position.total, ',')
 
-            if position.country.id==3 or position.country.id==4 or position.country.id==6:
-                total_reward=reward+currency
-                return total_reward
-            else:
-                total_reward=currency+reward
-                return total_reward
+        if position.country.id==3 or position.country.id==4 or position.country.id==6:
+            total_reward=reward+currency
+            return total_reward
+        else:
+            total_reward=currency+reward
+            return total_reward
 
 class UserBookmark(View):
     @login_decorator
