@@ -350,8 +350,8 @@ class HomeView(View):
             "image"          : position.company.image_set.first().image_url,
             "name"           : position.name,
             "company"        : position.company.name,
-            "city"           : position.city.name,
-            "country"        : position.city.country.name,
+            "city"           : position.city.name if position.city else None,
+            "country"        : position.city.country.name if position.city else None,
             "total_reward"   : get_reward_currency(position.id),
         }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else ''
 
@@ -360,8 +360,8 @@ class HomeView(View):
             "image"          : position.company.image_set.first().image_url,
             "name"           : position.name,
             "company"        : position.company.name,
-            "city"           : position.city.name,
-            "country"        : position.city.country.name,
+            "city"           : position.city.name if position.city else None,
+            "country"        : position.city.country.name if position.city else None,
             "total_reward"   : get_reward_currency(position.id),
         }for position in positions.order_by('created_at')[:4]]
 
@@ -545,7 +545,7 @@ class JobAdPosition(View):
             return JsonResponse({ "positions" : '' },status=200)
         return JsonResponse({ "positions" : positions },status=200)
 
-class JobAdItem(View):
+class JobAdPurchase(View):
     
     @login_decorator
     def post(self,request):
@@ -598,6 +598,28 @@ class JobAdPurchased(View):
         
         return HttpResponse(status=200)
         
+class NetworkAd(View):
+    
+    def post(self,request):
+        
+        data = json.loads(request.body)
+        
+        try:
+            Position_item.objects.create(
+                company    = Company.objects.get(Q(name=data['company_name'])|
+                                                 Q(email=data['email'])).id,
+                item       = data['item_id'],
+                expiration = data['expiration'],
+                start_date = data['start_date'],
+                end_date   = data['end_data'],
+                image_url  = data['image_url'],
+                title      = data['title'],
+                description= data['description'],
+            )
+        except:
+            return JsonResponse({"message" : "회사이름이나 이메일이 올바른지 확인해주세요"},status=400)
+        return HttpResponse(status=200)
+    
 # class ReadingMatchup(View):
 #     @login_decorator
 #     def post(self, request):
