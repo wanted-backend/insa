@@ -80,7 +80,7 @@ class Job_text(models.Model):
 
 class Resume(models.Model):
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
-    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True)
+    job_category = models.ForeignKey('company.Job_category', on_delete=models.SET_NULL, null=True)
     matchup_career = models.ForeignKey('Matchup_career', on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True)
     contact = models.CharField(max_length=50, null=True)
@@ -92,8 +92,7 @@ class Resume(models.Model):
     image_url = models.URLField(max_length=2000, null=True)
     title = models.CharField(max_length=150, null=True)
     income = models.IntegerField(default=0)
-    school = models.CharField(max_length=100, null=True)
-    deleted = models.BooleanField(default=0)
+    resume_resume_role = models.ManyToManyField('company.Role', through='Resume_role', related_name='resume_resume_role')
 
     class Meta:
         db_table = 'resumes'
@@ -200,3 +199,11 @@ class Link(models.Model):
 
     class Meta:
         db_table = 'links'
+
+class Resume_role(models.Model):
+
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
+    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True )
+
+    class Meta:
+        db_table = 'resume_roles'
