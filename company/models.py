@@ -84,8 +84,8 @@ class Workplace(models.Model):
     country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True)
     city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
     address = models.CharField(max_length=1000)
-    lat = models.DecimalField(max_digits=10, decimal_places=7)
-    lng = models.DecimalField(max_digits=10, decimal_places=7)
+    lat = models.DecimalField(max_digits=10, decimal_places=7, null=True)
+    lng = models.DecimalField(max_digits=10, decimal_places=7, null=True)
     represent = models.BooleanField(default=0)
 
     class Meta:
