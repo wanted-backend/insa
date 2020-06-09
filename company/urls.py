@@ -3,8 +3,8 @@ from django.urls import path
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         PositionBookmarkView, PositionApplyView, CompanyRequestResume, CompanyReadingResume, \
         JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
-        PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch, JobAdItem, \
-        CompanyProposalsResume, CompanyInfomationModify
+        PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch, \
+        CompanyProposalsResume, CompanyInfomationModify, NetworkAd, JobAdPurchase, JobAdPurchased
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -24,8 +24,10 @@ urlpatterns = [
     path('/proposals/matchup', CompanyProposalsResume.as_view()),
     path('/position/main', PositionMain.as_view()),
     path('/position/advertisement', PositionAdvertisement.as_view()),
-    path('/job-ad/items', JobAdItem.as_view()),
+    path('/job-ad/purchase', JobAdPurchase.as_view()),
     path('/position/main/filter', MainFilter.as_view()),
     path('/position/tag', TagView.as_view()),
     path('/position/tag/search', TagSearch.as_view()),
+    path('/job-ad/purchased',JobAdPurchased.as_view()),
+    path('/network-ad',NetworkAd.as_view()),
 ]

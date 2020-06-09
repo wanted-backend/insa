@@ -189,7 +189,8 @@ class Expiration(models.Model):
         db_table = 'expirations'
 
 class Position_item(models.Model):
-
+    
+    company = models.ForeignKey('Company',on_delete=models.SET_NULL, null=True)
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True)
     expiration = models.ForeignKey('Expiration', on_delete=models.SET_NULL, null=True)
@@ -301,6 +302,6 @@ class Proposal(models.Model):
     place = models.CharField(max_length=200)
     stock = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = 'proposals'
