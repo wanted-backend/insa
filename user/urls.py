@@ -3,14 +3,15 @@ from django.urls import path
 from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, \
          LogInView, UserResumeWriteView, ResumeDetailWriteView, \
          ResumeDetailView, CareerResultView, ResumeMainView, \
-         AdminExists, Profile, LikedCompanies, UserMatchUpView
+         AdminExists, Profile, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, \
+         MatchupJobTextView, UserUpdateView, UserGlobalView
 
 urlpatterns = [
-	path('/exists', UserEmailExists.as_view()),
-	path('/admin/exists', AdminExists.as_view()),
+    path('/exists', UserEmailExists.as_view()),
+    path('/admin/exists', AdminExists.as_view()),
     path('/register', UserRegisterView.as_view()),
-	path('/adminregister', AdminRegisterView.as_view()),
-	path('/login', LogInView.as_view()),
+    path('/adminregister', AdminRegisterView.as_view()),
+    path('/login', LogInView.as_view()),
     path('/profile', Profile.as_view()),
     path('/likes', LikedCompanies.as_view()),
     path('/resume', ResumeView.as_view()),
@@ -20,6 +21,10 @@ urlpatterns = [
     path('/resumeResult/<str:main_career_id>', CareerResultView.as_view()),
     path('/resumeMain', ResumeMainView.as_view()),
     path('/specList', UserMatchUpView.as_view()),
+    path('/userResume/<str:main_resume_id>', UserMatchUpResumeView.as_view()),
+    path('/jobtext', MatchupJobTextView.as_view()),
+    path('/userUpdate', UserUpdateView.as_view()),
+    path('/global', UserGlobalView.as_view()),
     # path('/requests', CompanyRequestsResume.as_view()),
     # path('/proposals', CompanyInterviewResume.as_view()),
 ]

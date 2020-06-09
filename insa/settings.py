@@ -29,7 +29,7 @@ SECRET_KEY = config.SECRET['SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*','','']
+ALLOWED_HOSTS = ['*','192.168.219.108','192.168.219.108:8000']
 
 # Application definition
 
@@ -152,6 +152,7 @@ CORS_ALLOW_HEADERS = (
 
 APPEND_SLASH = False
 
+'''
 LOGGING = {
      'disable_existing_loggers': False,
      'version': 1,
@@ -182,3 +183,4 @@ LOGGING = {
          },
      },
    }
+'''
