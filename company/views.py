@@ -1,9 +1,11 @@
 import json
 import random
-import datetime
 import config
 import urllib
 import requests
+import datetime 
+import monthdelta
+import math
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
@@ -521,11 +523,11 @@ class PositionMain(View):
         elif year==-1:
             year_filter=city_filter
         else:
-            year_filter=city_filter.filter(Q(min_level__gte=year) & Q(max_level__lte=year))
+            year_filter=city_filter.filter(Q(min_level__lte=year) & Q(max_level__gte=year))
         return self.sort_position(sort_by, year_filter)
 
     def filter_city(self, city, year, sort_by, country_filter):
-        if city=='all':
+        if city==['all']:
             city_filter=country_filter
         else:
             city_filter=country_filter.filter(city__name__in=city)
@@ -539,7 +541,7 @@ class PositionMain(View):
         return self.filter_city(city, year, sort_by, country_filter)
 
     def keyword_search(self, country, city, year, sort_by, keyword):
-        if keyword!=None:
+        if keyword:
             keyword_list = keyword.split(' ')
             keyword_filter = Q()
             for keyword in keyword_list:
@@ -559,7 +561,7 @@ class PositionMain(View):
         limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
         keyword=request.GET.get('keyword', None)
-        
+
         position_filter=self.keyword_search(country, city, year, sort_by, keyword)
         position_list=[{
             'id':position.id,
@@ -750,19 +752,20 @@ class CompanyProposalsResume(View):
 
 class MainFilter(View):
     def get(self, request):
-        country=[{
-            country.name:[city.name for city in country.city_set.all()] 
-            }for country in Country.objects.all()],
+        country_city=[{
+            'country':country.name,
+            'city':[city.name for city in country.city_set.all()] 
+            }for country in Country.objects.all()]
         career_level=[level.year for level in Matchup_career.objects.all()]
         
-        
-        return JsonResponse({'country':country, 'career':career_level}, status=200)
+        return JsonResponse({'country_city':country_city, 'career':career_level}, status=200)
 
 class TagView(View):
     def get(self, request):
         tag_list=[{
             category.name:[tag.name for tag in category.tag_set.all()]
         }for category in Category.objects.all()]
+        
         return JsonResponse({'tag_list':tag_list}, status=200)
 
 class TagSearch(View):
@@ -786,3 +789,77 @@ class TagSearch(View):
             }for position in tag_search[offset:offset+limit]]
 
         return JsonResponse({'position':search_list}, status=200)
+
+class CompanyMatchupSearch(View):
+    def filter_year(self, year_from, year_to, country_filter):
+        resume_search=country_filter(Q(total__gte=year_from) & Q(total__lte=year_to))
+
+        return resume_search
+
+    def filter_country(self, country, year_from, year_to, resume_filter):
+        if country==['all']:
+            country_filter=resume_filter
+        else:
+            country_filter=resume_filter.filter(user__country__name__in=country)
+        return self.filter_year(year_from, year_to, country_filter)
+
+    def keyword_search(self, keyword, country, year_from, year_to):
+        if keyword:
+            keyword_list=keyword.split(' ')
+            keyword_filter=Q()
+            for keyword in keyword_list:
+                keyword_filter.add(Q(career__company__icontains=keyword), Q.OR)
+                keyword_filter.add(Q(education__school__icontains=keyword), Q.OR)
+                keyword_filter.add(Q(matchup_skill__skill__icontains=keyword), Q.OR)
+            resume_filter=Resume.objects.filter(keyword_filter)
+        
+        else:
+            resume_filter=Resume.objects.all()
+        return self.filter_country(country, year_from, year_to, resume_filter)
+                
+    def get_duration(self, end_year, end_month, start_year, start_month):
+        day=1
+        end_date=datetime.datetime(int(end_year), int(end_month), day)
+        start_date=datetime.datetime(int(start_year), int(start_month), day)
+        
+        return monthdelta.monthmod(start_date, end_date)[0].months
+    
+    def get_total_career(self, user_id):
+        resume=Resume.objects.filter(Q(is_matchup=1) & Q(user_id=user_id))
+        day=1
+        for career in resume.career_set.all():
+            end_date=datetime.datetime(int(career.career_set.end_year), int(career.career_set.end_month), day)
+            start_date=datetime.datetime(int(career.career_set.start_year), int(career.career_set.start_month), day)
+            total_month=monthdelta.monthmod(start_date, end_date)[0].months
+        total_year=round(total_month/12)
+        
+        return total_year
+    
+    @login_decorator
+    def get(self, request):
+        offset=request.GET.get('offset', 0)
+        limit=request.GET.get('limit', 10)
+        country=request.GET.getlist('country', 'all')
+        year_from=int(request.GET.getlist('year_from', 0))
+        year_to=int(request.GET.getlist('year_to', 20))
+        keyword=request.GET.get('keyword', None)
+
+        resume_search=self.keyword_search(keyword, country, year_from, year_to)
+        resume_list=[{
+            'id':resume.id,
+            'name':resume.user.name,
+            'role':[role.role.name for role in resume.resume_role_set.all()],
+            'year':resume.matchup_career.year,
+            'career':[{
+                'toal':get_total_career(resume.user.id),
+                'company':career.career_set.company,
+                'duration':get_duration(career.career_set.end_year, career.career_set.end_month, 
+                            career.career_set.start_year, career.career_set.start_month)
+            }for career in resume.career_set.all()],
+            'description':resume.description,
+            'skill':[skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
+            'school':resume.education_set.first().school,
+            'specialism':resume.education_set.first().specialism
+            }for resume in resume_search[offset:offset+limit]] 
+
+        return JsonResponse({'resume_search':resume_list}, status=200)

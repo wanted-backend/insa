@@ -4,7 +4,8 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         PositionBookmarkView, PositionApplyView, CompanyRequestResume, CompanyReadingResume, \
         JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
         PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch, \
-        CompanyProposalsResume, CompanyInfomationModify, NetworkAd, JobAdPurchase, JobAdPurchased
+        CompanyProposalsResume, CompanyInfomationModify, NetworkAd, JobAdPurchase, JobAdPurchased, \
+        CompanyMatchupSearch
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -30,4 +31,5 @@ urlpatterns = [
     path('/position/tag/search', TagSearch.as_view()),
     path('/job-ad/purchased',JobAdPurchased.as_view()),
     path('/network-ad',NetworkAd.as_view()),
+    path('/matchup/search', CompanyMatchupSearch.as_view())
 ]
