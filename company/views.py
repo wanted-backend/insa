@@ -12,7 +12,7 @@ from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network)
+                                    Reading, Proposal, Category , Network , Position_item)
 
 class CompanyRegister(View):
 	@login_decorator
@@ -340,7 +340,7 @@ class HomeView(View):
     def get(self,request):
 
         user = request.user
-        roles = Matchup.objects.get(user_id=user.id) if Matchup.objects.filter(user_id=user.id).exists() else None
+        roles = Resume.objects.get(user_id=user.id) if Resume.objects.filter(user_id=user.id).exists() else None
         mathced_position = Position.objects.filter(role_id=roles.role.id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
@@ -548,20 +548,6 @@ class JobAdPosition(View):
 class JobAdItem(View):
     
     @login_decorator
-    def get(self,request):
-
-        items = Network.objects.all()
-        itemdetail = [{
-            "id"         : item.id,
-            "name"       : item.name,
-            "period"     : item.period,
-            "item_price" : item.displayed_amount,
-            "include_tax": item.price_amount,
-        }for item in items]
-        
-        return JsonResponse({"items" : itemdetail }, status=200)
-    
-    @login_decorator
     def post(self,request):
         
         data = json.loads(request.body)
@@ -594,12 +580,24 @@ class JobAdItem(View):
        
         return JsonResponse({"response" : response},status=200)
         
-class Purchased(View):
+class JobAdPurchased(View):
     
     def post(self,request):
         
         data = json.loads(request.body)
-    
+        
+        for items in data:
+            
+            Position_item.objects.create(
+                position   = items['postions_id'],
+                item       = items['item_id'],     # 1 직무상단 2 네트워크 
+                expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
+                start_date = items['start_date'],
+                end_date   = items['end_date'],
+            )
+        
+        return HttpResponse(status=200)
+        
 # class ReadingMatchup(View):
 #     @login_decorator
 #     def post(self, request):
