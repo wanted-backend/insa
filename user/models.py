@@ -78,6 +78,13 @@ class Job_text(models.Model):
     class Meta:
         db_table = 'job_texts'
 
+class Resume_role(models.Model):
+    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
+    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        db_table = 'resume_roles'
+
 class Resume(models.Model):
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
     job_category = models.ForeignKey('company.Job_category', on_delete=models.SET_NULL, null=True)
@@ -201,11 +208,3 @@ class Link(models.Model):
 
     class Meta:
         db_table = 'links'
-
-class Resume_role(models.Model):
-
-    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True )
-
-    class Meta:
-        db_table = 'resume_roles'
