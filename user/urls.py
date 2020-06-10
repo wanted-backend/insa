@@ -1,10 +1,6 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, \
-         LogInView, UserResumeWriteView, ResumeDetailWriteView, UserMatchUpResumeView, \
-         ResumeDetailView, CareerResultView, ResumeMainView, CompanyInterviewResume, \
-         AdminExists, LikedCompanies, UserMatchUpView, CompanyRequestsResume, \
-         MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark
+from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume
 
 urlpatterns = [
     path('/exists', UserEmailExists.as_view()),
@@ -26,5 +22,6 @@ urlpatterns = [
     path('/jobtext', MatchupJobTextView.as_view()),
     path('/userUpdate', UserUpdateView.as_view()),
     path('/global', UserGlobalView.as_view()),
-    path('/bookmark', UserBookmark.as_view())
+    path('/bookmark', UserBookmark.as_view()),
+    path('/matchupDetail', UserMatchUpDetailView.as_view())
 ]

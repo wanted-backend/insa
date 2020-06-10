@@ -99,6 +99,8 @@ class Resume(models.Model):
     image_url = models.URLField(max_length=2000, null=True)
     title = models.CharField(max_length=150, null=True)
     income = models.IntegerField(default=0)
+    total_work = models.IntegerField(default=0, null=True)
+    is_job_category = models.BooleanField(default=0)
     resume_resume_role = models.ManyToManyField('company.Role', through='Resume_role', related_name='resume_resume_role')
 
     class Meta:
