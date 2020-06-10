@@ -3,7 +3,7 @@ import random
 import config
 import urllib
 import requests
-import datetime 
+import datetime
 import monthdelta
 import math
 
@@ -43,7 +43,7 @@ class CompanyRegister(View):
         try:
             if Company.objects.filter(user_id=request.user.id).exists():
                 return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
-            
+
             Company(
                 user_id = request.user.id,
                 name = data['name'],
@@ -361,7 +361,7 @@ class PositionApplyView(View):
 
 
 class ThemeList(View):
-    
+
     def get(self,request,theme_id):
 
         offset = int(request.GET.get('offset'))
@@ -375,7 +375,7 @@ class ThemeList(View):
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
         }
-        
+
         themelist = [{
             "id"          : position.id,
             "image"       : position.company.image_set.all().first().image_url,
@@ -398,7 +398,7 @@ class HomeView(View):
         mathced_position = Position.objects.filter(role_id=roles.role.id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
-        
+
         user_recomended_position = [{
             "id"             : position.id,
             "image"          : position.company.image_set.first().image_url,
@@ -579,7 +579,7 @@ class JobAdPosition(View):
 
     @login_decorator
     def get(self,request):
-        
+
         try:
             user = request.user
             company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
@@ -597,21 +597,21 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-    
+
     @login_decorator
     def post(self,request):
-        
+
         data = json.loads(request.body)
 
         me = 'http://localhost:8000'
-        
+
         request_url = "https://kapi.kakao.com/v1/payment/ready"
-        
+
         headers1 = {
             'Authorization' : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
             "Content-type"  : 'application/application/x-www-form-urlencoded;charset=utf-8',
         }
-        
+
         params1 = {
             'cid' : "TC0ONETIME",
             'partner_order_id': '1001',
@@ -628,33 +628,33 @@ class JobAdPurchase(View):
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-       
+
         return JsonResponse({"response" : response},status=200)
-        
+
 class JobAdPurchased(View):
-    
+
     def post(self,request):
-        
+
         data = json.loads(request.body)
-        
+
         for items in data:
-            
+
             Position_item.objects.create(
                 position   = items['postions_id'],
-                item       = items['item_id'],     # 1 직무상단 2 네트워크 
+                item       = items['item_id'],     # 1 직무상단 2 네트워크
                 expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
                 start_date = items['start_date'],
                 end_date   = items['end_date'],
             )
-        
+
         return HttpResponse(status=200)
-        
+
 class NetworkAd(View):
-    
+
     def post(self,request):
-        
+
         data = json.loads(request.body)
-        
+
         try:
             Position_item.objects.create(
                 company    = Company.objects.get(Q(name=data['company_name'])|
@@ -672,12 +672,12 @@ class NetworkAd(View):
         return HttpResponse(status=200)
 
 class MatchUpItem(View):
-    
+
     @login_decorator
     def get(self,request):
-        
+
         item = Matchup_item.objects.all()
-        
+
         plans = [{
             "name"             : plan.name,
             "displayed_amount" : plan.displayed_amount,
@@ -685,7 +685,7 @@ class MatchUpItem(View):
             "count"            : plan.count,
             "days"             : plan.days,
         }for plan in item]
-        
+
         return JsonResponse({"plans" : plans} , status=200)
 
 class CompanyReadingResume(View):
@@ -771,10 +771,10 @@ class MainFilter(View):
     def get(self, request):
         country_city=[{
             'country':country.name,
-            'city':[city.name for city in country.city_set.all()] 
+            'city':[city.name for city in country.city_set.all()]
             }for country in Country.objects.all()]
         career_level=[level.year for level in Matchup_career.objects.all()]
-        
+
         return JsonResponse({'country_city':country_city, 'career':career_level}, status=200)
 
 class TagView(View):
@@ -782,7 +782,7 @@ class TagView(View):
         tag_list=[{
             category.name:[tag.name for tag in category.tag_set.all()]
         }for category in Category.objects.all()]
-        
+
         return JsonResponse({'tag_list':tag_list}, status=200)
 
 class TagSearch(View):
@@ -829,18 +829,18 @@ class CompanyMatchupSearch(View):
                 keyword_filter.add(Q(education__school__icontains=keyword), Q.OR)
                 keyword_filter.add(Q(matchup_skill__skill__icontains=keyword), Q.OR)
             resume_filter=Resume.objects.filter(keyword_filter)
-        
+
         else:
             resume_filter=Resume.objects.all()
         return self.filter_country(country, year_from, year_to, resume_filter)
-                
+
     def get_duration(self, end_year, end_month, start_year, start_month):
         day=1
         end_date=datetime.datetime(int(end_year), int(end_month), day)
         start_date=datetime.datetime(int(start_year), int(start_month), day)
-        
+
         return monthdelta.monthmod(start_date, end_date)[0].months
-    
+
     def get_total_career(self, user_id):
         resume=Resume.objects.filter(Q(is_matchup=1) & Q(user_id=user_id))
         day=1
@@ -849,9 +849,9 @@ class CompanyMatchupSearch(View):
             start_date=datetime.datetime(int(career.career_set.start_year), int(career.career_set.start_month), day)
             total_month=monthdelta.monthmod(start_date, end_date)[0].months
         total_year=round(total_month/12)
-        
+
         return total_year
-    
+
     @login_decorator
     def get(self, request):
         offset=request.GET.get('offset', 0)
@@ -870,13 +870,13 @@ class CompanyMatchupSearch(View):
             'career':[{
                 'toal':get_total_career(resume.user.id),
                 'company':career.career_set.company,
-                'duration':get_duration(career.career_set.end_year, career.career_set.end_month, 
+                'duration':get_duration(career.career_set.end_year, career.career_set.end_month,
                             career.career_set.start_year, career.career_set.start_month)
             }for career in resume.career_set.all()],
             'description':resume.description,
             'skill':[skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
             'school':resume.education_set.first().school,
             'specialism':resume.education_set.first().specialism
-            }for resume in resume_search[offset:offset+limit]] 
+            }for resume in resume_search[offset:offset+limit]]
 
         return JsonResponse({'resume_search':resume_list}, status=200)
