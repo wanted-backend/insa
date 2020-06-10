@@ -5,7 +5,7 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
         PositionAdvertisement, PositionMain, MainFilter, TagView, TagSearch, JobAdPurchase, \
         JobAdPurchased, MatchUpItem, CompanyProposalsResume, CompanyInfomationModify, \
-        NetworkAd, CompanyMatchupSearch, CompanyLogoModify
+        NetworkAd, CompanyMatchupSearch, CompanyLogoModify, CompanyImages, CompanyImageModefy
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -33,5 +33,7 @@ urlpatterns = [
     path('/network-ad',NetworkAd.as_view()),
     path('/matchup/item',MatchUpItem.as_view()),
     path('/matchup/search', CompanyMatchupSearch.as_view()),
-    path('/modify/images', CompanyLogoModify.as_view()),
+    path('/modify/logo', CompanyLogoModify.as_view()),
+    path('/images', CompanyImages.as_view()),
+    path('/modify/image', CompanyImageModefy.as_view()),
 ]
