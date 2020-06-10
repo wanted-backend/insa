@@ -8,6 +8,7 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
 from datetime           import datetime
+from django.db.models   import Q
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
@@ -371,9 +372,18 @@ class ResumeDetailWriteView(View):
         data = json.loads(request.body)
         user = request.user
 
+        def is_zero(data):
+            if data == "":
+                data = 0
+            else :
+                data = data
+            return data
+
         category = request.GET.get('category', None)
 
         if category == 'career':
+
+            print(data)
 
             resumes = Resume.objects.get(id=main_resume_id)
             resumes.total_work = 0
@@ -390,9 +400,14 @@ class ResumeDetailWriteView(View):
                 careers.company = index_data['company']
                 careers.position = index_data['position']
 
-                startMonth = int(index_data['start'][0])*12+int(index_data['start'][1])
-                endMonth = int(insdex_data['end'][0])*12+int(index_data['end'][1])
-                total_year = round((endMonth-startMonth)/12)
+                startYear = is_zero(index_data['start'][0])
+                startMonth = is_zero(index_data['start'][1])
+                endYear = is_zero(index_data['end'][0])
+                endMonth = is_zero(index_data['end'][1])
+
+                start = int(startYear)*12+int(startMonth)
+                end = int(endYear)*12+int(endMonth)
+                total_year = round((end-start)/12)
 
                 resumes.total_work = resumes.total_work+total_year
                 careers.save()
@@ -446,7 +461,7 @@ class ResumeDetailWriteView(View):
         elif category == 'link':
             for index_data in data:
                 links = Link.objects.get(id=index_data['id'])
-                links.url = index_data['link']
+                links.url = index_data['url']
 
         return HttpResponse(status=200)
 
@@ -506,6 +521,62 @@ class UserMatchUpView(View):
 
         return JsonResponse({'speclist':speclist,'year':year}, status=200)
 
+class MatchUpDetailGetView(View):
+
+    @login_decorator
+    def get(self, request, main_resume_id):
+        if Resume.objects.filter(id=main_resume_id).exists():
+            if Resume.objects.get(id=main_resume_id).is_job_category==True:
+                resume_infor = (
+                    Resume.objects.select_related('job_category')
+                    .select_related('matchup_career')
+                    .prefetch_related('resume_resume_role','matchup_skill_set')
+                    .get(id=main_resume_id)
+                )
+
+                user_data ={
+                    'job_category':resume_infor.job_category.id,
+                    'role':[infor['id'] for infor in resume_infor.resume_resume_role.values('id')],
+                    'matchup_career':resume_infor.matchup_career.id,
+                    'income':resume_infor.income,
+                    'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+                }
+            else:
+                user_data = False
+        else:
+            user_data = False
+        return JsonResponse({'data':user_data}, status=200)
+
+class MatchUpDetailPostView(View):
+
+    def post(self, request, main_resume_id):
+        data = json.loads(request.body)
+        resume_professional = Resume.objects.get(id=main_resume_id)
+        resume_professional.is_job_category = True
+        resume_professional.job_category_id = data['job_category']
+        resume_professional.matchup_career_id = data['matchup_career']
+        resume_professional.income = int(data['income'])
+        resume_professional.save()
+
+        resume_roles = Resume_role.objects.filter(resume_id=main_resume_id)
+        matchup_skills = Matchup_skill.objects.filter(resume_id=main_resume_id)
+        resume_roles.delete()
+        matchup_skills.delete()
+
+        for role in data['role']:
+            resume_role = Resume_role.objects.create()
+            resume_role.resume_id = main_resume_id
+            resume_role.role_id = role
+            resume_role.save()
+
+        for sk in data['skill']:
+            matchup_skill = Matchup_skill.objects.create()
+            matchup_skill.resume_id = main_resume_id
+            matchup_skill.skill = sk
+            matchup_skill.save()
+
+        return HttpResponse(status=200)
+
 class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
@@ -520,56 +591,50 @@ class CompanyRequestsResume(View):
         ]
         return JsonResponse({'is_resume_request':data}, status=200)
 
+class UserMatchUpDetailView(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
-        resume_professional = Resume.objects.get(id=data['resume_id'])
-        resume_professional.job_category_id = data['job_category']
-        resume_professional.matchup_career_id = data['matchup_career']
-        resume_professional.income = data['income']
-        resume_professional.save()
 
-        for role in data['role']:
-            resume_role = Resume_role.objects.create()
-            resume_role.resume_id = data['resume_id']
-            resume_role.role_id = role
-            resume_role.save()
+        user_data={
+            'job_category':{
+                'id':"",
+                'name':""
+            },
+            'role':[],
+            'career':{
+                'id':"",
+                'name':""
+            },
+            'skill':[]
+        }
 
-        for sk in data['skill']:
-            matchup_skill = Matchup_skill.objects.create()
-            matchup_skill.resume_id = data['resume_id']
-            matchup_skill.skill = sk
-            matchup_skill.save()
-
-        return HttpResponse(status=200)
-
-class UserMatchUpDetailView(View):
-    @login_decorator
-    def get(self, request):
-        data = json.loads(request.body)
-        print(data)
         if Resume.objects.filter(id=data['resume_id']).exists():
-            resume_infor = Resume.objects.select_related('job_category').prefetch_related('resume_resume_role').prefetch_related('matchup_skill_set').get(id=data['resume_id'])
-
-            data ={
-                'job_category':resume_infor.job_category.name,
-                'role':[infor['name'] for infor in resume_infor.resume_resume_role.values('name')],
-                'income':resume_infor.income,
-                'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
-            }
-            return JsonResponse({'data':data}, status=200)
-        else:
-            data={
-                'job_category':"",
-                'role':[],
-                'income':"",
-                'skill':[]
-            }
-            return JsonResponse({'data':data}, status=200)
+            if Resume.objects.get(id=data['resume_id']).is_job_category==1:
+                resume_infor = (
+                    Resume.objects.select_related('job_category')
+                    .select_related('matchup_career')
+                    .prefetch_related('resume_resume_role','matchup_skill_set')
+                    .get(id=data['resume_id']))
+                user_data ={
+                    'job_category':{
+                        'id':resume_infor.job_category.id,
+                        'name':resume_infor.job_category.name
+                    },
+                    'role':[infor for infor in resume_infor.resume_resume_role.values('id','name')],
+                    'career':{
+                        'id':resume_infor.matchup_career.id,
+                        'name':resume_infor.matchup_career.year
+                    },
+                    'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+                }
+                return JsonResponse({'data':user_data}, status=200)
+        return JsonResponse({'data':user_data}, status=200)
 
 class UserMatchUpResumeView(View):
     @login_decorator
     def get(self, request, main_resume_id):
+
         mainResume=Resume.objects.prefetch_related('education_set').prefetch_related('career_set').get(id=main_resume_id)
 
         if len(mainResume.education_set.values())!=0:
