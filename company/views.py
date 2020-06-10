@@ -58,7 +58,6 @@ class CompanyRegister(View):
                 website = data['website'],
                 keyword = data['keyword'],
                 recommender = data['recommender'],
-                image_url = data['image_url'],
 			).save()
 
             address = data['address']
@@ -96,7 +95,6 @@ class CompanyRegister(View):
                 'email':company.email,
                 'contact_number':company.contact_number,
                 'keyword':company.keyword,
-                'image_url':company.image_url
             }
         ]
         return JsonResponse({'company':data}, status=200)
@@ -125,7 +123,79 @@ class CompanyInfomationModify(View):
             place.lat = coordinates[0]
             place.lng = coordinates[1]
             place.save()
-            return HttpResponse(status=200)
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyLogoModify(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            company.image_url = data['image_url']
+            company.save()
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyImages(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            Image.objects.create(
+                company_id=company.id,
+                image_url=data['image_url']
+            )
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+    @login_decorator
+    def get(self, request):
+        company = Company.objects.get(user_id=request.user.id)
+        images = Image.objects.filter(company_id=company.id)
+        data = [
+            {
+                'id':image.id,
+                'company_id':image.company.id,
+                'image':image.image_url
+            } for image in images
+        ]
+        return JsonResponse({'images': data}, status=200)
+
+class CompanyImageModefy(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'image_id' in data:
+                image_id = data['image_id']
+                company = Company.objects.get(user_id=request.user.id)
+                image = Image.objects.get(id=image_id)
+                image.image_url = data['image_url']
+                image.save()
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyImageDelete(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'image_id' in data:
+                image_id = data['image_id']
+                company = Company.objects.get(user_id=request.user.id)
+                images = Image.objects.filter(company_id=company.id).count()
+                if images == 2:
+                    return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
+                Image.objects.get(id=image_id).delete()
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
