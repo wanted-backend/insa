@@ -58,7 +58,6 @@ class CompanyRegister(View):
                 website = data['website'],
                 keyword = data['keyword'],
                 recommender = data['recommender'],
-                image_url = data['image_url'],
 			).save()
 
             address = data['address']
@@ -96,7 +95,6 @@ class CompanyRegister(View):
                 'email':company.email,
                 'contact_number':company.contact_number,
                 'keyword':company.keyword,
-                'image_url':company.image_url
             }
         ]
         return JsonResponse({'company':data}, status=200)
@@ -125,7 +123,79 @@ class CompanyInfomationModify(View):
             place.lat = coordinates[0]
             place.lng = coordinates[1]
             place.save()
-            return HttpResponse(status=200)
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyLogoModify(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            company.image_url = data['image_url']
+            company.save()
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyImages(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            Image.objects.create(
+                company_id=company.id,
+                image_url=data['image_url']
+            )
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+    @login_decorator
+    def get(self, request):
+        company = Company.objects.get(user_id=request.user.id)
+        images = Image.objects.filter(company_id=company.id)
+        data = [
+            {
+                'id':image.id,
+                'company_id':image.company.id,
+                'image':image.image_url
+            } for image in images
+        ]
+        return JsonResponse({'images': data}, status=200)
+
+class CompanyImageModefy(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'image_id' in data:
+                image_id = data['image_id']
+                company = Company.objects.get(user_id=request.user.id)
+                image = Image.objects.get(id=image_id)
+                image.image_url = data['image_url']
+                image.save()
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+class CompanyImageDelete(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'image_id' in data:
+                image_id = data['image_id']
+                company = Company.objects.get(user_id=request.user.id)
+                images = Image.objects.filter(company_id=company.id).count()
+                if images == 2:
+                    return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
+                Image.objects.get(id=image_id).delete()
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
@@ -603,8 +673,8 @@ class JobAdPurchase(View):
 
         data = json.loads(request.body)
 
-        me = 'http://localhost:8000'
-
+        front = 'http://localhost:8000' # 준영님 주소
+        
         request_url = "https://kapi.kakao.com/v1/payment/ready"
 
         headers1 = {
@@ -616,21 +686,27 @@ class JobAdPurchase(View):
             'cid' : "TC0ONETIME",
             'partner_order_id': '1001',
             'partner_user_id': 'wanted',
-            'item_name': data['name'],
-            'quantity': data['period'],
-            'total_amount': data['item_price'],
+            'item_name': data['name'], # 아이템 명 불러오기,
+            'quantity': data['period'], # 아이템 불러오기,
+            'total_amount': data['item_price'], # 아이템 불러오기,
             'tax_free_amount': 0,
             'vat_amount' : int(int(data['include_tax']) - int(data['item_price'])),
-            'approval_url': me + '/kakaopay/purchase',
-            'fail_url': me,
-            'cancel_url': me,
+            'approval_url': front + '/kakaopay/purchase', # 결제성공시 리다이렉트
+            'fail_url': front, # 실패
+            'cancel_url': front, # 취소
         }
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-
-        return JsonResponse({"response" : response},status=200)
-
+        
+        res = {
+            'tid' : response['tid'],
+            'redirect' : response['next_redirect_pc_url'],
+            'created_at' : response['created_at'],
+        }
+        
+        return JsonResponse({ "response" : res },status=200)
+        
 class JobAdPurchased(View):
 
     def post(self,request):
@@ -644,7 +720,7 @@ class JobAdPurchased(View):
                 item       = items['item_id'],     # 1 직무상단 2 네트워크
                 expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
                 start_date = items['start_date'],
-                end_date   = items['end_date'],
+                end_date   = datetime.timedelta(items['end_date']),
             )
 
         return HttpResponse(status=200)
