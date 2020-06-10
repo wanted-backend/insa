@@ -184,7 +184,7 @@ class ResumeMainView(View):
     @login_decorator
     def get(self, request):
         user = request.user
-        resumeMain = Resume.objects.filter(user_id=user.id).values('id','title', 'created_at', 'status')
+        resumeMain = Resume.objects.filter(user_id=user.id).values('id','title', 'created_at', 'status', 'is_matchup')
         for resume in resumeMain:
             if resume['title'] == None:
                 resume['title']=""
@@ -409,6 +409,11 @@ class ResumeDetailWriteView(View):
         category = request.GET.get('category', None)
 
         if category == 'career':
+
+            resumes = Resume.objects.get(id=main_resume_id)
+            resumes.total_work = 0
+            resumes.save()
+
             for index_data in data:
 
                 careers = Career.objects.get(id=index_data['id'])
@@ -419,7 +424,14 @@ class ResumeDetailWriteView(View):
                 careers.is_working = index_data['is_working']
                 careers.company = index_data['company']
                 careers.position = index_data['position']
+
+                startMonth = int(index_data['start'][0])*12+int(index_data['start'][1])
+                endMonth = int(insdex_data['end'][0])*12+int(index_data['end'][1])
+                total_year = round((endMonth-startMonth)/12)
+
+                resumes.total_work = resumes.total_work+total_year
                 careers.save()
+                resumes.save()
 
                 for element in index_data['result']:
                     results = Result.objects.get(id=element['id'])
@@ -431,6 +443,10 @@ class ResumeDetailWriteView(View):
                     results.end_month = element['end'][1]
                     results.end = element['end']
                     results.save()
+
+            if resumes.total_work<0 or resumes.total_work>100:
+                resumes.total_work = 0
+                resumes.save()
 
         elif category == 'award':
             for index_data in data:
@@ -542,7 +558,6 @@ class UserMatchUpView(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
-        print(data)
         resume_professional = Resume.objects.get(id=data['resume_id'])
         resume_professional.job_category_id = data['job_category']
         resume_professional.matchup_career_id = data['matchup_career']
@@ -562,6 +577,30 @@ class UserMatchUpView(View):
             matchup_skill.save()
 
         return HttpResponse(status=200)
+
+class UserMatchUpDetailView(View):
+    @login_decorator
+    def get(self, request):
+        data = json.loads(request.body)
+        print(data)
+        if Resume.objects.filter(id=data['resume_id']).exists():
+            resume_infor = Resume.objects.select_related('job_category').prefetch_related('resume_resume_role').prefetch_related('matchup_skill_set').get(id=data['resume_id'])
+
+            data ={
+                'job_category':resume_infor.job_category.name,
+                'role':[infor['name'] for infor in resume_infor.resume_resume_role.values('name')],
+                'income':resume_infor.income,
+                'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+            }
+            return JsonResponse({'data':data}, status=200)
+        else:
+            data={
+                'job_category':"",
+                'role':[],
+                'income':"",
+                'skill':[]
+            }
+            return JsonResponse({'data':data}, status=200)
 
 class UserMatchUpResumeView(View):
     @login_decorator
@@ -644,9 +683,10 @@ class UserUpdateView(View):
             contact=userInfor.contact
 
         data ={
-            "name":userInfor.name,
-            "email":userInfor.email,
-            "contact":contact
+            'name':userInfor.name,
+            'email':userInfor.email,
+            'contact':contact,
+            'country_id':userInfor.country_id
         }
 
         return JsonResponse({'data':data}, status=200)
@@ -660,6 +700,7 @@ class UserUpdateView(View):
         userInfor.name = data['name']
         userInfor.email = data['email']
         userInfor.contact = data['contact']
+        userInfor.country_id = data['country_id']
 
         userInfor.save()
 

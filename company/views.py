@@ -307,7 +307,7 @@ class PositionApplyView(View):
 
 
 class ThemeList(View):
-    
+
     def get(self,request,theme_id):
 
         offset = int(request.GET.get('offset'))
@@ -321,7 +321,7 @@ class ThemeList(View):
             "theme_inner_image"       : themes.inner_image_url,
             "theme_inner_description" : themes.inner_description,
         }
-        
+
         themelist = [{
             "id"          : position.id,
             "image"       : position.company.image_set.all().first().image_url,
@@ -344,7 +344,7 @@ class HomeView(View):
         mathced_position = Position.objects.filter(role_id=roles.role.id) if roles != None else None
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
-        
+
         user_recomended_position = [{
             "id"             : position.id,
             "image"          : position.company.image_set.first().image_url,
@@ -510,7 +510,7 @@ class PositionMain(View):
         limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
         keyword=request.GET.get('keyword', None)
-        
+
         position_filter=self.keyword_search(country, city, year, sort_by, keyword)
         position_list=[{
             'id':position.id,
@@ -528,7 +528,7 @@ class JobAdPosition(View):
 
     @login_decorator
     def get(self,request):
-        
+
         try:
             user = request.user
             company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
@@ -546,7 +546,7 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdItem(View):
-    
+
     @login_decorator
     def get(self,request):
 
@@ -558,23 +558,23 @@ class JobAdItem(View):
             "item_price" : item.displayed_amount,
             "include_tax": item.price_amount,
         }for item in items]
-        
+
         return JsonResponse({"items" : itemdetail }, status=200)
-    
+
     @login_decorator
     def post(self,request):
-        
+
         data = json.loads(request.body)
 
         me = 'http://localhost:8000'
-        
+
         request_url = "https://kapi.kakao.com/v1/payment/ready"
-        
+
         headers1 = {
             'Authorization' : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
             "Content-type"  : 'application/application/x-www-form-urlencoded;charset=utf-8',
         }
-        
+
         params1 = {
             'cid' : "TC0ONETIME",
             'partner_order_id': '1001',
@@ -591,15 +591,15 @@ class JobAdItem(View):
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-       
+
         return JsonResponse({"response" : response},status=200)
-        
+
 class Purchased(View):
-    
+
     def post(self,request):
-        
+
         data = json.loads(request.body)
-    
+
 # class ReadingMatchup(View):
 #     @login_decorator
 #     def post(self, request):
@@ -684,11 +684,11 @@ class Purchased(View):
 class MainFilter(View):
     def get(self, request):
         country=[{
-            country.name:[city.name for city in country.city_set.all()] 
+            country.name:[city.name for city in country.city_set.all()]
             }for country in Country.objects.all()],
         career_level=[level.year for level in Matchup_career.objects.all()]
-        
-        
+
+
         return JsonResponse({'country':country, 'career':career_level}, status=200)
 
 class TagView(View):

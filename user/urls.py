@@ -4,7 +4,7 @@ from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeV
          LogInView, UserResumeWriteView, ResumeDetailWriteView, \
          ResumeDetailView, CareerResultView, ResumeMainView, \
          AdminExists, Profile, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, \
-         MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark
+         MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView
 
 urlpatterns = [
     path('/exists', UserEmailExists.as_view()),
@@ -27,5 +27,6 @@ urlpatterns = [
     path('/global', UserGlobalView.as_view()),
     # path('/requests', CompanyRequestsResume.as_view()),
     # path('/proposals', CompanyInterviewResume.as_view()),
-    path('/bookmark', UserBookmark.as_view())
+    path('/bookmark', UserBookmark.as_view()),
+    path('/matchupDetail', UserMatchUpDetailView.as_view())
 ]
