@@ -603,7 +603,7 @@ class JobAdPurchase(View):
         
         data = json.loads(request.body)
 
-        me = 'http://localhost:8000'
+        front = 'http://localhost:8000' # 준영님 주소
         
         request_url = "https://kapi.kakao.com/v1/payment/ready"
         
@@ -616,20 +616,26 @@ class JobAdPurchase(View):
             'cid' : "TC0ONETIME",
             'partner_order_id': '1001',
             'partner_user_id': 'wanted',
-            'item_name': data['name'],
-            'quantity': data['period'],
-            'total_amount': data['item_price'],
+            'item_name': data['name'], # 아이템 명 불러오기,
+            'quantity': data['period'], # 아이템 불러오기,
+            'total_amount': data['item_price'], # 아이템 불러오기,
             'tax_free_amount': 0,
             'vat_amount' : int(int(data['include_tax']) - int(data['item_price'])),
-            'approval_url': me + '/kakaopay/purchase',
-            'fail_url': me,
-            'cancel_url': me,
+            'approval_url': front + '/kakaopay/purchase', # 결제성공시 리다이렉트
+            'fail_url': front, # 실패
+            'cancel_url': front, # 취소
         }
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-       
-        return JsonResponse({"response" : response},status=200)
+        
+        res = {
+            'tid' : response['tid'],
+            'redirect' : response['next_redirect_pc_url'],
+            'created_at' : response['created_at'],
+        }
+        
+        return JsonResponse({ "response" : res },status=200)
         
 class JobAdPurchased(View):
     
@@ -644,7 +650,7 @@ class JobAdPurchased(View):
                 item       = items['item_id'],     # 1 직무상단 2 네트워크 
                 expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
                 start_date = items['start_date'],
-                end_date   = items['end_date'],
+                end_date   = datetime.timedelta(items['end_date']),
             )
         
         return HttpResponse(status=200)

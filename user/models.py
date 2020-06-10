@@ -206,11 +206,3 @@ class Link(models.Model):
 
     class Meta:
         db_table = 'links'
-
-class Resume_role(models.Model):
-
-    resume = models.ForeignKey('Resume', on_delete=models.SET_NULL, null=True)
-    role = models.ForeignKey('company.Role', on_delete=models.SET_NULL, null=True )
-
-    class Meta:
-        db_table = 'resume_roles'
