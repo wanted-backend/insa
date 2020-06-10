@@ -129,6 +129,18 @@ class CompanyInfomationModify(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+class CompanyLogoModify(View):
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            company.image_url = data['image_url']
+            company.save()
+            return HttpResponse(status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
 class CompanyPosition(View):
 	@login_decorator
 	def post(self, request):
