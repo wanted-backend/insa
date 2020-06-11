@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, MatchUpDetailPostView
+from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView
 
 urlpatterns = [
     path('/exists', UserEmailExists.as_view()),
@@ -25,5 +25,4 @@ urlpatterns = [
     path('/bookmark', UserBookmark.as_view()),
     path('/matchupDetail', UserMatchUpDetailView.as_view()),
     path('/resumeRole/<str:main_resume_id>', MatchUpDetailGetView.as_view()),
-    path('/resumeRolePost/<str:main_resume_id>', MatchUpDetailPostView.as_view()),
 ]
