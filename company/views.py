@@ -576,7 +576,7 @@ class PositionMain(View):
             0:city_filter.filter(Q(entry=True) | Q(min_level=0)),
             10:city_filter.filter(min_level__lte=year)
         }.get(year, year_filter)
-        
+
         return self.sort_position(sort_by, year)
 
     def filter_city(self, city, year, sort_by, country_filter):
@@ -894,7 +894,7 @@ class CompanyMatchupSearch(View):
         else:
             keyword_filter=resume_list
         return self.filter_country(country, year_from, year_to, keyword_filter)
-    
+
     def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
         resume=Resume.objects.all()
         resume_list={
@@ -904,7 +904,7 @@ class CompanyMatchupSearch(View):
             4:resume.filter(Q(reading__company_id=company_id) & Q(reading__read=1)),
             5:resume.filter(proposal__company_id=company_id)
         }.get(resume_list, resume)
-        
+
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
