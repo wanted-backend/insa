@@ -674,7 +674,7 @@ class JobAdPurchase(View):
         data = json.loads(request.body)
 
         front = 'http://localhost:8000' # 준영님 주소
-        
+
         request_url = "https://kapi.kakao.com/v1/payment/ready"
 
         headers1 = {
@@ -698,15 +698,15 @@ class JobAdPurchase(View):
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-        
+
         res = {
             'tid' : response['tid'],
             'redirect' : response['next_redirect_pc_url'],
             'created_at' : response['created_at'],
         }
-        
+
         return JsonResponse({ "response" : res },status=200)
-        
+
 class JobAdPurchased(View):
 
     def post(self,request):
@@ -956,3 +956,38 @@ class CompanyMatchupSearch(View):
             }for resume in resume_search[offset:offset+limit]]
 
         return JsonResponse({'resume_search':resume_list}, status=200)
+
+#class ApplicantView(View):
+#    @login_decorator
+#    def get(self, request):
+#        user = request.user
+#       user
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

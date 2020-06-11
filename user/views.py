@@ -547,8 +547,7 @@ class MatchUpDetailGetView(View):
             user_data = False
         return JsonResponse({'data':user_data}, status=200)
 
-class MatchUpDetailPostView(View):
-
+    @login_decorator
     def post(self, request, main_resume_id):
         data = json.loads(request.body)
         resume_professional = Resume.objects.get(id=main_resume_id)
@@ -790,3 +789,5 @@ class UserBookmark(View):
         }for position in position_list]
 
         return JsonResponse({'bookmark':is_bookmarked}, status=200)
+
+
