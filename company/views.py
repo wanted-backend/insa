@@ -219,7 +219,7 @@ class CompanyPosition(View):
 				entry = data['entry'],
 				mim_wage = data['mim_wage'],
 				max_wage = data['mim_wage'],
-                expiry_date = is_always,
+                                expiry_date = is_always,
 				always = data['always'],
 				workplace = Workplace.objects.get(company_id=company.id),
 				name = data['name'],
@@ -384,7 +384,8 @@ class DetailView(View):
                 'city':item.city.name if item.city else None,
                 'country':item.country.name,
                 'reward':get_reward_currency(position.id)
-                }for item in Position.objects.order_by('?') if item.role.job_category_id==position.role.job_category_id][:RECOMENDATION_LIMIT]
+                }for item in Position.objects.order_by('?') 
+                    if item.role.job_category_id==position.role.job_category_id][:RECOMENDATION_LIMIT]
             }]
         return JsonResponse({'position':position_list}, status=200)
 
@@ -394,38 +395,23 @@ class PositionBookmarkView(View):
         try:
             if Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).exists():
                 Bookmark.objects.filter(Q(user_id=request.user.id) & Q(position_id=position_id)).delete()
-                return HttpResponse(status=200)
+                return JsonResponse({'message':False}, status=200)
 
             Position.objects.get(id=position_id).bookmarks.add(User.objects.get(id=request.user.id))
-            return HttpResponse(status=200)
+            return JsonResponse({'message':True}, status=200)
 
         except Position.DoesNotExist:
             return JsonResponse({'message':'INVALID_POSITION'}, status=400)
 
 class PositionApplyView(View):
     @login_decorator
-    def get(self, request, position_id):
-        user_id=request.user.id
-        user=User.objects.prefetch_related('resume_set').filter(user_id=user_id)
-
-        apply_info:{
-            'name':user.name,
-            'email':user.email,
-            'resume':[{
-                'title':resume.title,
-                'created_at':resume.created_at,
-                'status':True if status==1 else False
-            }for resume in user.resume_set.all()]
-        }
-        return JsonResponse({'apply_info':apply_info}, status=200)
-
-    @login_decorator
     def post(self, request, position_id):
-        user_id=request.user.id
+        data=json.loads(request.body)
 
         Volunteers.objects.create(
             position_id=position_id,
             user_id=request.user.id,
+            resume_id=data['resume']
         )
         return HttpResponse(status=200)
 
@@ -584,17 +570,16 @@ class PositionMain(View):
         }
         for key in sort:
             if sort_by==key:
-                position_filter=sort[key]
-                return position_filter
+                return sort[key]
 
     def filter_year(self, year, sort_by, city_filter):
-        if year==0:
-            year_filter=city_filter.filter(entry=True)
-        elif year==-1:
-            year_filter=city_filter
-        else:
-            year_filter=city_filter.filter(Q(min_level__lte=year) & Q(max_level__gte=year))
-        return self.sort_position(sort_by, year_filter)
+        year_filter=city_filter.filter(Q(min_level__lte=year) & Q(max_level__gte=year))
+        year={
+            -1:city_filter,
+            0:city_filter.filter(Q(entry=True) | Q(min_level=0)),
+            10:city_filter.filter(min_level__lte=year)
+        }.get(year, year_filter)
+        return self.sort_position(sort_by, year)
 
     def filter_city(self, city, year, sort_by, country_filter):
         if city==['all']:
@@ -617,8 +602,7 @@ class PositionMain(View):
             for keyword in keyword_list:
                 keyword_filter.add(Q(name__icontains=keyword), Q.OR)
                 keyword_filter.add(Q(company__name__icontains=keyword), Q.OR)
-
-            position_filter=Position.objects.filter(keyword_filter)
+            position_filter=Position.objects.filter(keyword_filter).distinct()
         else:
             position_filter=Position.objects.all()
         return self.filter_country(country, city, year, sort_by, position_filter)
@@ -626,7 +610,7 @@ class PositionMain(View):
     def get(self, request):
         sort_by=request.GET.get('sort_by', 'latest')
         country=request.GET.get('country', '한국')
-        city=request.GET.getlist('city', 'all')
+        city=request.GET.getlist('city', ['all'])
         year=int(request.GET.get('year', -1))
         limit=int(request.GET.get('limit', 20))
         offset=int(request.GET.get('offset', 0))
@@ -843,15 +827,15 @@ class CompanyProposalsResume(View):
         ]
         return JsonResponse({'interview_proposal':data}, status=200)
 
-class MainFilter(View):
+class FilterView(View):
     def get(self, request):
-        country_city=[{
+        city_by_country=[{
             'country':country.name,
             'city':[city.name for city in country.city_set.all()]
             }for country in Country.objects.all()]
-        career_level=[level.year for level in Matchup_career.objects.all()]
-
-        return JsonResponse({'country_city':country_city, 'career':career_level}, status=200)
+        career=[level.year for level in Matchup_career.objects.all()]
+        
+        return JsonResponse({'country_city':city_by_country, 'career':career}, status=200)
 
 class TagView(View):
     def get(self, request):
@@ -867,7 +851,7 @@ class TagSearch(View):
         offset=int(request.GET.get('offset', 0))
         limit=int(request.GET.get('limit', 20))
 
-        if tag==None:
+        if tag:
             return JsonResponse({'message':'INVALID_TAG_NAME'})
 
         tag_search=Position.objects.filter(company__company_tag__tag__name=tag).order_by('-created_at')
@@ -885,7 +869,7 @@ class TagSearch(View):
 
 class CompanyMatchupSearch(View):
     def filter_year(self, year_from, year_to, country_filter):
-        resume_search=country_filter(Q(total__gte=year_from) & Q(total__lte=year_to))
+        resume_search=country_filter.filter(Q(total__gte=year_from) & Q(total__lte=year_to))
 
         return resume_search
 
@@ -905,7 +889,6 @@ class CompanyMatchupSearch(View):
                 keyword_filter.add(Q(education__school__icontains=keyword), Q.OR)
                 keyword_filter.add(Q(matchup_skill__skill__icontains=keyword), Q.OR)
             resume_filter=Resume.objects.filter(keyword_filter)
-
         else:
             resume_filter=Resume.objects.all()
         return self.filter_country(country, year_from, year_to, resume_filter)
@@ -916,25 +899,14 @@ class CompanyMatchupSearch(View):
         start_date=datetime.datetime(int(start_year), int(start_month), day)
 
         return monthdelta.monthmod(start_date, end_date)[0].months
-
-    def get_total_career(self, user_id):
-        resume=Resume.objects.filter(Q(is_matchup=1) & Q(user_id=user_id))
-        day=1
-        for career in resume.career_set.all():
-            end_date=datetime.datetime(int(career.career_set.end_year), int(career.career_set.end_month), day)
-            start_date=datetime.datetime(int(career.career_set.start_year), int(career.career_set.start_month), day)
-            total_month=monthdelta.monthmod(start_date, end_date)[0].months
-        total_year=round(total_month/12)
-
-        return total_year
-
+    
     @login_decorator
     def get(self, request):
         offset=request.GET.get('offset', 0)
         limit=request.GET.get('limit', 10)
-        country=request.GET.getlist('country', 'all')
-        year_from=int(request.GET.getlist('year_from', 0))
-        year_to=int(request.GET.getlist('year_to', 20))
+        country=request.GET.getlist('country', ['한국'])
+        year_from=int(request.GET.get('year_from', 0))
+        year_to=int(request.GET.get('year_to', 20))
         keyword=request.GET.get('keyword', None)
 
         resume_search=self.keyword_search(keyword, country, year_from, year_to)
@@ -942,9 +914,8 @@ class CompanyMatchupSearch(View):
             'id':resume.id,
             'name':resume.user.name,
             'role':[role.role.name for role in resume.resume_role_set.all()],
-            'year':resume.matchup_career.year,
+            'total_career':resume.total_work,
             'career':[{
-                'toal':get_total_career(resume.user.id),
                 'company':career.career_set.company,
                 'duration':get_duration(career.career_set.end_year, career.career_set.end_month,
                             career.career_set.start_year, career.career_set.start_month)
@@ -953,15 +924,10 @@ class CompanyMatchupSearch(View):
             'skill':[skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
             'school':resume.education_set.first().school,
             'specialism':resume.education_set.first().specialism
-            }for resume in resume_search[offset:offset+limit]]
+            }for resume in resume_search.order_by('-created_at')[offset:offset+limit]] 
 
         return JsonResponse({'resume_search':resume_list}, status=200)
 
-#class ApplicantView(View):
-#    @login_decorator
-#    def get(self, request):
-#        user = request.user
-#       user
 
 
 
