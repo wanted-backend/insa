@@ -763,23 +763,24 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-    def get_reward_currency(position_id):
-        position=Position.objects.get(id=position_id)
-        currency=position.country.english_currency
-        reward=format(position.total, ',')
+def get_reward_currency(position_id):
+    position=Position.objects.get(id=position_id)
+    currency=position.country.english_currency
+    reward=format(position.total, ',')
 
-        if position.country.id==3 or position.country.id==4 or position.country.id==6:
-            total_reward=reward+currency
-            return total_reward
-        else:
-            total_reward=currency+reward
-            return total_reward
+    if position.country.id==3 or position.country.id==4 or position.country.id==6:
+        total_reward=reward+currency
+        return total_reward
+    else:
+        total_reward=currency+reward
+        return total_reward
 
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
         position_list=Position.objects.filter(bookmark__user_id=request.user.id)
         is_bookmarked=[{
+            'id':position.id,
             'image':position.company.image_set.first().image_url,
             'name':position.name,
             'company':position.company.name,
