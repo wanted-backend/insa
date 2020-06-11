@@ -155,8 +155,8 @@ class CompanyImages(View):
 
     @login_decorator
     def get(self, request):
-        company = Company.objects.get(user_id=request.user.id)
-        images = Image.objects.filter(company_id=company.id)
+        company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
+        images = company.image_set.filter(company_id=company.id)
         data = [
             {
                 'id':image.id,
@@ -173,8 +173,8 @@ class CompanyImageModefy(View):
         try:
             if 'image_id' in data:
                 image_id = data['image_id']
-                company = Company.objects.get(user_id=request.user.id)
-                image = Image.objects.get(id=image_id)
+                company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
+                image = company.image_set.get(id=image_id)
                 image.image_url = data['image_url']
                 image.save()
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
@@ -189,8 +189,8 @@ class CompanyImageDelete(View):
         try:
             if 'image_id' in data:
                 image_id = data['image_id']
-                company = Company.objects.get(user_id=request.user.id)
-                images = Image.objects.filter(company_id=company.id).count()
+                company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
+                images = company.image_set.filter(company_id=company.id).count()
                 if images == 2:
                     return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
                 Image.objects.get(id=image_id).delete()
@@ -204,8 +204,7 @@ class CompanyPosition(View):
 	def post(self, request):
 		data = json.loads(request.body)
 		try:
-			user = request.user
-			company = Company.objects.get(user_id=user.id)
+			company = Company.objects.get(user_id=request.user.id)
 			is_entry_min = 0 if data['entry']==True else data['min_level']
 			is_entry_max = 1 if data['entry']==True else data['max_level']
 			is_always = None if data['always']==True else data['expiry_date']

@@ -18,7 +18,6 @@ from .models            import User, Security, Resume, Career, Result, Education
 class UserEmailExists(View):
     def post(self, request):
         data = json.loads(request.body)
-        print(data)
         try:
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'True'}, status=200)
@@ -34,8 +33,6 @@ class UserRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
-
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -67,7 +64,6 @@ class AdminRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -130,7 +126,6 @@ class LogInView(View):
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
 class LikedCompanies(View):
-
     @login_decorator
     def get(self, request):
         companies = Want.objects.filter(user_id=request.user.id)
@@ -146,7 +141,6 @@ class LikedCompanies(View):
         return JsonResponse({'companies':data}, status=200)
 
 class ResumeMainView(View):
-
     @login_decorator
     def get(self, request):
         user = request.user
