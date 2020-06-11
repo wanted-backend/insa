@@ -239,8 +239,8 @@ class PositionList(View):
     @login_decorator
     def get(self, request):
         user = request.user
-        company = Company.objects.get(user_id=user.id)
-        positions = Position.objects.filter(company_id=company.id)
+        company = Company.objects.prefetch_related('position_set').get(user_id=user.id)
+        positions = company.position_set.filter(company_id=company.id)
         data = [
                 {
                     'name':position.name,
