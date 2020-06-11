@@ -223,6 +223,7 @@ class Volunteers(models.Model):
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=1)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
 
     class Meta:
         db_table = 'volunteers'

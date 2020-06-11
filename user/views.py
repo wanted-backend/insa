@@ -18,7 +18,6 @@ from .models            import User, Security, Resume, Career, Result, Education
 class UserEmailExists(View):
     def post(self, request):
         data = json.loads(request.body)
-        print(data)
         try:
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'True'}, status=200)
@@ -34,8 +33,6 @@ class UserRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
-
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -67,7 +64,6 @@ class AdminRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -117,7 +113,7 @@ class LogInView(View):
 
                 if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
                     token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
-
+                    
                     Security.objects.create(
                         user_id = user.id,
                         user_ip = request.META['REMOTE_ADDR'],
@@ -129,8 +125,21 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
-class LikedCompanies(View):
+class IsAdminToken(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'token' in data:
+                token = data['token']
+                user_id = jwt.decode(token, SECRET_KEY, algorithm='HS256')['id']
+                company = Company.objects.filter(user_id=user_id)
+                if company.exists():
+                    return JsonResponse({'MESSAGE': True}, status=200)
+                return JsonResponse({'MESSAGE': False}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+class LikedCompanies(View):
     @login_decorator
     def get(self, request):
         companies = Want.objects.filter(user_id=request.user.id)
@@ -146,7 +155,6 @@ class LikedCompanies(View):
         return JsonResponse({'companies':data}, status=200)
 
 class ResumeMainView(View):
-
     @login_decorator
     def get(self, request):
         user = request.user
@@ -763,23 +771,24 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-    def get_reward_currency(position_id):
-        position=Position.objects.get(id=position_id)
-        currency=position.country.english_currency
-        reward=format(position.total, ',')
+def get_reward_currency(position_id):
+    position=Position.objects.get(id=position_id)
+    currency=position.country.english_currency
+    reward=format(position.total, ',')
 
-        if position.country.id==3 or position.country.id==4 or position.country.id==6:
-            total_reward=reward+currency
-            return total_reward
-        else:
-            total_reward=currency+reward
-            return total_reward
+    if position.country.id==3 or position.country.id==4 or position.country.id==6:
+        total_reward=reward+currency
+        return total_reward
+    else:
+        total_reward=currency+reward
+        return total_reward
 
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
         position_list=Position.objects.filter(bookmark__user_id=request.user.id)
         is_bookmarked=[{
+            'id':position.id,
             'image':position.company.image_set.first().image_url,
             'name':position.name,
             'company':position.company.name,
