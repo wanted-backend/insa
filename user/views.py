@@ -321,7 +321,6 @@ class ResumeDetailWriteView(View):
         category    = request.GET.get('category', None)
 
         def year_month(theme_set, theme):
-
             data=[]
             for index,element in enumerate(theme_set):
                 start_year  = theme.objects.filter(resume_id=main_resume_id).values('start_year')[index]
@@ -330,12 +329,9 @@ class ResumeDetailWriteView(View):
                 end_month   = theme.objects.filter(resume_id=main_resume_id).values('end_month')[index]
                 start       = [start_year['start_year'], start_month['start_month']]
                 end         = [end_year['end_year'], end_month['end_month']]
-
                 element['start']    = start
                 element['end']      = end
-
                 data.append(element)
-
             return data
 
         if category == 'career':
@@ -345,7 +341,6 @@ class ResumeDetailWriteView(View):
 
             for data_list in datas:
                 result = Result.objects.filter(career_id=data_list['id']).values('id','career_id','title','content')
-
                 for index,element in enumerate(result):
                     start_year  = Result.objects.filter(career_id=data_list['id']).values('start_year')[index]
                     start_month = Result.objects.filter(career_id=data_list['id']).values('start_month')[index]
@@ -357,8 +352,8 @@ class ResumeDetailWriteView(View):
                     element['start']    = start
                     element['end']      = end
 
-                    data_list['result']=list(result)
-                    data.append(data_list)
+                data_list['result']=list(result)
+                data.append(data_list)
 
         elif category == 'award':
             data = []
@@ -480,6 +475,10 @@ class ResumeDetailWriteView(View):
                 links.url   = index_data['url']
 
         return HttpResponse(status=200)
+
+
+
+
 
 class CareerResultView(View):
 
