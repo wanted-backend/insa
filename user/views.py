@@ -394,9 +394,7 @@ class ResumeDetailWriteView(View):
 
         if category == 'career':
 
-            print(data)
-
-            resumes             = Resume.objects.get(id=main_resume_id)
+            resumes = Resume.objects.get(id=main_resume_id)
             resumes.total_work  = 0
             resumes.save()
 
@@ -475,10 +473,6 @@ class ResumeDetailWriteView(View):
                 links.url   = index_data['url']
 
         return HttpResponse(status=200)
-
-
-
-
 
 class CareerResultView(View):
 
