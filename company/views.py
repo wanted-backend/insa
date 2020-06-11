@@ -567,9 +567,7 @@ class PositionMain(View):
             'popularity':year_filter.annotate(count=Count('volunteers')).order_by('-count'),
             'compensation':year_filter.order_by(F('total')*F('country__exchange_rate'))
         }
-        for key in sort:
-            if sort_by==key:
-                return sort[key]
+        return sort[sort_by]
 
     def filter_year(self, year, sort_by, city_filter):
         year_filter=city_filter.filter(Q(min_level__lte=year) & Q(max_level__gte=year))
@@ -578,6 +576,7 @@ class PositionMain(View):
             0:city_filter.filter(Q(entry=True) | Q(min_level=0)),
             10:city_filter.filter(min_level__lte=year)
         }.get(year, year_filter)
+        
         return self.sort_position(sort_by, year)
 
     def filter_city(self, city, year, sort_by, country_filter):
@@ -868,18 +867,21 @@ class TagSearch(View):
 
 class CompanyMatchupSearch(View):
     def filter_year(self, year_from, year_to, country_filter):
-        resume_search=country_filter.filter(Q(total__gte=year_from) & Q(total__lte=year_to))
-
-        return resume_search
-
-    def filter_country(self, country, year_from, year_to, resume_filter):
-        if country==['all']:
-            country_filter=resume_filter
+        if (Q(year_from==0) & yeasr_to==20):
+            year_filter=country_filter
         else:
-            country_filter=resume_filter.filter(user__country__name__in=country)
+            year_filter=country_filter.filter(Q(total_work__gte=year_from) & Q(total_work__lte=year_to))
+
+        return year_filter
+
+    def filter_country(self, country, year_from, year_to, keyword_filter):
+        if country==['all']:
+            country_filter=keyword_filter
+        else:
+            country_filter=keyword_filter.filter(user__country__name__in=country)
         return self.filter_year(year_from, year_to, country_filter)
 
-    def keyword_search(self, keyword, country, year_from, year_to):
+    def keyword_search(self, keyword, country, year_from, year_to, resume_list):
         if keyword:
             keyword_list=keyword.split(' ')
             keyword_filter=Q()
@@ -887,10 +889,23 @@ class CompanyMatchupSearch(View):
                 keyword_filter.add(Q(career__company__icontains=keyword), Q.OR)
                 keyword_filter.add(Q(education__school__icontains=keyword), Q.OR)
                 keyword_filter.add(Q(matchup_skill__skill__icontains=keyword), Q.OR)
-            resume_filter=Resume.objects.filter(keyword_filter)
+                keyword_filter.add(Q(description__icontains=keyword), Q.OR)
+            keyword_filter=resume_list.filter(keyword_filter)
         else:
-            resume_filter=Resume.objects.all()
-        return self.filter_country(country, year_from, year_to, resume_filter)
+            keyword_filter=resume_list
+        return self.filter_country(country, year_from, year_to, keyword_filter)
+    
+    def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
+        resume=Resume.objects.all()
+        resume_list={
+            1:resume.filter(company_matchup__company_id=company_id),
+            2:resume.filter(like__company_id=company_id),
+            3:resume.filter(Q(reading__company_id=company_id) & Q(reading__read=0)),
+            4:resume.filter(Q(reading__company_id=company_id) & Q(reading__read=1)),
+            5:resume.filter(proposal__company_id=company_id)
+        }.get(resume_list, resume)
+        
+        return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
         day=1
@@ -907,8 +922,10 @@ class CompanyMatchupSearch(View):
         year_from=int(request.GET.get('year_from', 0))
         year_to=int(request.GET.get('year_to', 20))
         keyword=request.GET.get('keyword', None)
+        resume_list=int(request.GET.get('list', -1))
+        company_id=Company.objects.get(user_id=request.user.id).id
 
-        resume_search=self.keyword_search(keyword, country, year_from, year_to)
+        resume_search=self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
         resume_list=[{
             'id':resume.id,
             'name':resume.user.name,
