@@ -429,7 +429,6 @@ class PositionApplyView(View):
         )
         return HttpResponse(status=200)
 
-
 class ThemeList(View):
 
     def get(self,request,theme_id):
@@ -464,11 +463,24 @@ class HomeView(View):
     def get(self,request):
 
         user = request.user
-        roles = Resume.objects.get(user_id=user.id) if Resume.objects.filter(user_id=user.id).exists() else None
-        mathced_position = Position.objects.filter(role_id=roles.role.id) if roles != None else None
+        roles = Resume.objects.get(user_id=1).job_category_id if Resume.objects.filter(user_id=1) else None# 목데이터 실제 테스트시 1이 아닌 user.id
         themes = Theme.objects.prefetch_related('position_set').all()
-        positions = Position.objects.select_related('company').prefetch_related('position_workplace_set').all()
-
+        positions = Position.objects.select_related('company').prefetch_related('position_workplace_set','role').all()
+        network_item = Position_item.objects.filter(
+            Q(start_date__lt=timezone.now()) & 
+            Q(end_date__gt=timezone.now()) & 
+            Q(item_id=2)) if Position_item.objects.filter(
+                Q(start_date__lt=timezone.now()) & 
+                Q(end_date__gt=timezone.now()) & 
+                Q(item_id=2)) else None 
+        
+        network_ad = [{
+            "id"             : item.id,
+            "img"            : item.image_url,
+            "title"          : item.title,
+            "subTitle"       : item.description,
+        }for item in network_item.order_by('?')][:4] if network_item else ''
+        
         user_recomended_position = [{
             "id"             : position.id,
             "image"          : position.company.image_set.first().image_url,
@@ -477,7 +489,7 @@ class HomeView(View):
             "city"           : position.city.name if position.city else None,
             "country"        : position.city.country.name if position.city else None,
             "total_reward"   : get_reward_currency(position.id),
-        }for position in mathced_position if position.role.job_category_id == roles.role.job_category_id][:4] if roles != None else ''
+        }for position in positions.order_by('?') if position.role.job_category_id == roles][:4] if roles else ''
 
         new_employment = [{
             "id"             : position.id,
@@ -507,7 +519,8 @@ class HomeView(View):
             "total_reward"   : get_reward_currency(recommend.id),
         }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
 
-        return JsonResponse({"position_recommend"  : user_recomended_position,
+        return JsonResponse({"network_item"        : network_ad,
+                             "position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
                              "theme_list"          : theme_list,
                              "Recommendation_week" : recommendations_of_the_week,
@@ -678,31 +691,31 @@ class JobAdPurchase(View):
         request_url = "https://kapi.kakao.com/v1/payment/ready"
 
         headers1 = {
-            'Authorization' : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
-            "Content-type"  : 'application/application/x-www-form-urlencoded;charset=utf-8',
+            'Authorization'   : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
+            "Content-type"    : 'application/application/x-www-form-urlencoded;charset=utf-8',
         }
 
         params1 = {
-            'cid' : "TC0ONETIME",
+            'cid'             : "TC0ONETIME",
             'partner_order_id': '1001',
-            'partner_user_id': 'wanted',
-            'item_name': data['name'], # 아이템 명 불러오기,
-            'quantity': data['period'], # 아이템 불러오기,
-            'total_amount': data['item_price'], # 아이템 불러오기,
-            'tax_free_amount': 0,
-            'vat_amount' : int(int(data['include_tax']) - int(data['item_price'])),
-            'approval_url': front + '/kakaopay/purchase', # 결제성공시 리다이렉트
-            'fail_url': front, # 실패
-            'cancel_url': front, # 취소
+            'partner_user_id' : 'wanted',
+            'item_name'       : data['name'], # 아이템 명 불러오기,
+            'quantity'        : data['period'], # 아이템 불러오기,
+            'total_amount'    : data['item_price'], # 아이템 불러오기,
+            'tax_free_amount' : 0,
+            'vat_amount'      : int(int(data['include_tax']) - int(data['item_price'])),
+            'approval_url'    : front + '/kakaopay/purchase', # 결제성공시 리다이렉트
+            'fail_url'        : front, # 실패
+            'cancel_url'      : front, # 취소
         }
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
         
         res = {
-            'tid' : response['tid'],
-            'redirect' : response['next_redirect_pc_url'],
-            'created_at' : response['created_at'],
+            'tid'            : response['tid'],
+            'redirect'       : response['next_redirect_pc_url'],
+            'created_at'     : response['created_at'],
         }
         
         return JsonResponse({ "response" : res },status=200)
@@ -719,7 +732,7 @@ class JobAdPurchased(View):
                 position   = items['postions_id'],
                 item       = items['item_id'],     # 1 직무상단 2 네트워크
                 expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
-                start_date = items['start_date'],
+                start_date = items['start_date'],  # 날짜 받는 방식 이야기
                 end_date   = datetime.timedelta(items['end_date']),
             )
 
@@ -737,7 +750,7 @@ class NetworkAd(View):
                                                  Q(email=data['email'])).id,
                 item       = data['item_id'],
                 expiration = data['expiration'],
-                start_date = data['start_date'],
+                start_date = data['start_date'], # 날짜 받는 방식 이야기
                 end_date   = data['end_data'],
                 image_url  = data['image_url'],
                 title      = data['title'],
