@@ -616,9 +616,9 @@ class CompanyRequestsResume(View):
 class UserMatchUpDetailView(View):
     @login_decorator
     def post(self, request):
-        data = json.loads(request.body)
 
-        user_data={
+        data        = json.loads(request.body)
+        user_data   = {
             'job_category':{
                 'id'    : "",
                 'name'  : ""
@@ -639,16 +639,18 @@ class UserMatchUpDetailView(View):
                     .prefetch_related('resume_resume_role','matchup_skill_set')
                     .get(id=data['resume_id']))
                 user_data ={
-                    'job_category':{
-                        'id':resume_infor.job_category.id,
-                        'name':resume_infor.job_category.name
+                    'job_category'  :
+                    {
+                        'id'    : resume_infor.job_category.id,
+                        'name'  : resume_infor.job_category.name
                     },
-                    'role':[infor for infor in resume_infor.resume_resume_role.values('id','name')],
-                    'career':{
-                        'id':resume_infor.matchup_career.id,
-                        'name':resume_infor.matchup_career.year
+                    'role'          : [infor for infor in resume_infor.resume_resume_role.values('id','name')],
+                    'career'        :
+                    {
+                        'id'    : resume_infor.matchup_career.id,
+                        'name'  : resume_infor.matchup_career.year
                     },
-                    'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+                    'skill'         : [infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
                 }
                 return JsonResponse({'data':user_data}, status=200)
         return JsonResponse({'data':user_data}, status=200)
@@ -657,7 +659,13 @@ class UserMatchUpResumeView(View):
     @login_decorator
     def get(self, request, main_resume_id):
 
-        mainResume=Resume.objects.prefetch_related('education_set').prefetch_related('career_set').get(id=main_resume_id)
+        mainResume =(
+            Resume
+            .objects
+            .prefetch_related('education_set')
+            .prefetch_related('career_set')
+            .get(id=main_resume_id)
+        )
 
         if len(mainResume.education_set.values())!=0:
             if mainResume.education_set.values()[0]['school']==None or mainResume.education_set.values()[0]['school']=="":
@@ -670,8 +678,8 @@ class UserMatchUpResumeView(View):
             else:
                 specialism = mainResume.education_set.values()[0]['specialism']
         else:
-            school="학교 미입력"
-            specialism="전공 미입력"
+            school      = "학교 미입력"
+            specialism  = "전공 미입력"
 
         if len(mainResume.career_set.values())!=0:
             if mainResume.career_set.values()[0]['company']==None or mainResume.career_set.values()[0]['company']=="":
@@ -683,8 +691,8 @@ class UserMatchUpResumeView(View):
             else:
                 position = mainResume.career_set.values()[0]['position']
         else:
-            company = '직장 미입력'
-            position = '직책 미입력'
+            company     = '직장 미입력'
+            position    = '직책 미입력'
 
         if mainResume.description==None or mainResume.description=="":
             description="자기소개 미입력"
@@ -692,96 +700,107 @@ class UserMatchUpResumeView(View):
             description=mainResume.description
         data =[
             {
-                'resume_id':mainResume.id
+                'resume_id': mainResume.id
             },
             {
              'user_school':
                 {
-                    'school':school,
-                    'specialism':specialism
+                    'school'    : school,
+                    'specialism': specialism
                 }
             },
             {
                 'user_career':
                 {
-                    'company':company,
-                    'position':position
+                    'company'   : company,
+                    'position'  : position
                 }
             },
             {
-                'description':description
+                'description': description
             }
-
         ]
 
         return JsonResponse({'data':data}, status=200)
 
 class MatchupJobTextView(View):
     def get(self, request):
-        job_text = Job_text.objects.all().values('id', 'is_working', 'text')
+
+        job_text = (
+            Job_text.objects
+            .all()
+            .values('id', 'is_working', 'text')
+        )
 
         return JsonResponse({'data':list(job_text)}, status=200)
 
 class UserUpdateView(View):
     @login_decorator
     def get(self, request):
-        user = request.user
 
-        userInfor = User.objects.get(id=user.id)
+        user        = request.user
+        userInfor   = User.objects.get(id=user.id)
 
         if userInfor.contact==None:
-            contact=""
+            contact = ""
         else:
-            contact=userInfor.contact
+            contact = userInfor.contact
 
         data ={
-            'name':userInfor.name,
-            'email':userInfor.email,
-            'contact':contact,
-            'country_id':userInfor.country_id
+            'name'      : userInfor.name,
+            'email'     : userInfor.email,
+            'contact'   : contact,
+            'country_id': userInfor.country_id
         }
 
         return JsonResponse({'data':data}, status=200)
 
     @login_decorator
     def post(self, request):
-        data = json.loads(request.body)
-        user = request.user
 
-        userInfor = User.objects.get(id=user.id)
-        userInfor.name = data['name']
-        userInfor.email = data['email']
-        userInfor.contact = data['contact']
-        userInfor.country_id = data['country_id']
+        data    = json.loads(request.body)
+        user    = request.user
 
+        userInfor               = User.objects.get(id=user.id)
+        userInfor.name          = data['name']
+        userInfor.email         = data['email']
+        userInfor.contact       = data['contact']
+        userInfor.country_id    = data['country_id']
         userInfor.save()
 
         return HttpResponse(status = 200)
 
 class UserGlobalView(View):
     def get(self, request):
-        country = Country.objects.all().values('id', 'name', 'number')
+
+        country = (
+            Country.objects
+            .all()
+            .values('id', 'name', 'number')
+        )
 
         return JsonResponse({'data':list(country)}, status=200)
 
 class MatchUpRegistrationView(View):
     @login_decorator
     def post(self, request):
+
         data = json.loads(request.body)
         if Resume.objects.filter(is_matchup=True).exists():
-            non_matchup_resume = Resume.objects.get(is_matchup=True)
-            non_matchup_resume.is_matchup=False
+            non_matchup_resume              = Resume.objects.get(is_matchup=True)
+            non_matchup_resume.is_matchup   = False
 
-        matchupResume = Resume.objects.get(id=data['resume_id'])
-        matchupResume.is_matchup=True
+        matchupResume               = Resume.objects.get(id=data['resume_id'])
+        matchupResume.is_matchup    = True
         matchupResume.save()
 
         if Matchup_job.objects.filter(resume_id=data['resume_id']).exists():
-            matchupjob = Matchup_job.objects.get(resume_id=data['resume_id'])
+            matchupjob  = Matchup_job.objects.get(resume_id=data['resume_id'])
         else:
-            matchupjob = Matchup_job.objects.create()
-            matchupjob.resume_id = data['resume_id']
-        matchupjob.job_text_id = data['job_text']
+            matchupjob              = Matchup_job.objects.create()
+            matchupjob.resume_id    = data['resume_id']
+
+        matchupjob.job_text_id  = data['job_text']
         matchupjob.save()
 
         return HttpResponse(status = 200)
