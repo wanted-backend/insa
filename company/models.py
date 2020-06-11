@@ -189,7 +189,7 @@ class Expiration(models.Model):
         db_table = 'expirations'
 
 class Position_item(models.Model):
-    
+
     company = models.ForeignKey('Company',on_delete=models.SET_NULL, null=True)
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True)
@@ -220,8 +220,10 @@ class Volunteers(models.Model):
 
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True, related_name='volunteers')
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=1)
+    resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
 
     class Meta:
         db_table = 'volunteers'

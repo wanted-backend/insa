@@ -8,6 +8,7 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
 from datetime           import datetime
+from django.db.models   import Q
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
@@ -17,7 +18,6 @@ from .models            import User, Security, Resume, Career, Result, Education
 class UserEmailExists(View):
     def post(self, request):
         data = json.loads(request.body)
-        print(data)
         try:
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'True'}, status=200)
@@ -33,8 +33,6 @@ class UserRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
-
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -66,7 +64,6 @@ class AdminRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            print(data)
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
@@ -116,7 +113,7 @@ class LogInView(View):
 
                 if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
                     token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
-
+                    
                     Security.objects.create(
                         user_id = user.id,
                         user_ip = request.META['REMOTE_ADDR'],
@@ -128,8 +125,21 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
-class LikedCompanies(View):
+class IsAdminToken(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'token' in data:
+                token = data['token']
+                user_id = jwt.decode(token, SECRET_KEY, algorithm='HS256')['id']
+                company = Company.objects.filter(user_id=user_id)
+                if company.exists():
+                    return JsonResponse({'MESSAGE': True}, status=200)
+                return JsonResponse({'MESSAGE': False}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+class LikedCompanies(View):
     @login_decorator
     def get(self, request):
         companies = Want.objects.filter(user_id=request.user.id)
@@ -145,7 +155,6 @@ class LikedCompanies(View):
         return JsonResponse({'companies':data}, status=200)
 
 class ResumeMainView(View):
-
     @login_decorator
     def get(self, request):
         user = request.user
@@ -371,9 +380,18 @@ class ResumeDetailWriteView(View):
         data = json.loads(request.body)
         user = request.user
 
+        def is_zero(data):
+            if data == "":
+                data = 0
+            else :
+                data = data
+            return data
+
         category = request.GET.get('category', None)
 
         if category == 'career':
+
+            print(data)
 
             resumes = Resume.objects.get(id=main_resume_id)
             resumes.total_work = 0
@@ -390,9 +408,14 @@ class ResumeDetailWriteView(View):
                 careers.company = index_data['company']
                 careers.position = index_data['position']
 
-                startMonth = int(index_data['start'][0])*12+int(index_data['start'][1])
-                endMonth = int(insdex_data['end'][0])*12+int(index_data['end'][1])
-                total_year = round((endMonth-startMonth)/12)
+                startYear = is_zero(index_data['start'][0])
+                startMonth = is_zero(index_data['start'][1])
+                endYear = is_zero(index_data['end'][0])
+                endMonth = is_zero(index_data['end'][1])
+
+                start = int(startYear)*12+int(startMonth)
+                end = int(endYear)*12+int(endMonth)
+                total_year = round((end-start)/12)
 
                 resumes.total_work = resumes.total_work+total_year
                 careers.save()
@@ -446,7 +469,7 @@ class ResumeDetailWriteView(View):
         elif category == 'link':
             for index_data in data:
                 links = Link.objects.get(id=index_data['id'])
-                links.url = index_data['link']
+                links.url = index_data['url']
 
         return HttpResponse(status=200)
 
@@ -506,6 +529,61 @@ class UserMatchUpView(View):
 
         return JsonResponse({'speclist':speclist,'year':year}, status=200)
 
+class MatchUpDetailGetView(View):
+
+    @login_decorator
+    def get(self, request, main_resume_id):
+        if Resume.objects.filter(id=main_resume_id).exists():
+            if Resume.objects.get(id=main_resume_id).is_job_category==True:
+                resume_infor = (
+                    Resume.objects.select_related('job_category')
+                    .select_related('matchup_career')
+                    .prefetch_related('resume_resume_role','matchup_skill_set')
+                    .get(id=main_resume_id)
+                )
+
+                user_data ={
+                    'job_category':resume_infor.job_category.id,
+                    'role':[infor['id'] for infor in resume_infor.resume_resume_role.values('id')],
+                    'matchup_career':resume_infor.matchup_career.id,
+                    'income':resume_infor.income,
+                    'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+                }
+            else:
+                user_data = False
+        else:
+            user_data = False
+        return JsonResponse({'data':user_data}, status=200)
+
+    @login_decorator
+    def post(self, request, main_resume_id):
+        data = json.loads(request.body)
+        resume_professional = Resume.objects.get(id=main_resume_id)
+        resume_professional.is_job_category = True
+        resume_professional.job_category_id = data['job_category']
+        resume_professional.matchup_career_id = data['matchup_career']
+        resume_professional.income = int(data['income'])
+        resume_professional.save()
+
+        resume_roles = Resume_role.objects.filter(resume_id=main_resume_id)
+        matchup_skills = Matchup_skill.objects.filter(resume_id=main_resume_id)
+        resume_roles.delete()
+        matchup_skills.delete()
+
+        for role in data['role']:
+            resume_role = Resume_role.objects.create()
+            resume_role.resume_id = main_resume_id
+            resume_role.role_id = role
+            resume_role.save()
+
+        for sk in data['skill']:
+            matchup_skill = Matchup_skill.objects.create()
+            matchup_skill.resume_id = main_resume_id
+            matchup_skill.skill = sk
+            matchup_skill.save()
+
+        return HttpResponse(status=200)
+
 class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
@@ -520,56 +598,50 @@ class CompanyRequestsResume(View):
         ]
         return JsonResponse({'is_resume_request':data}, status=200)
 
+class UserMatchUpDetailView(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
-        resume_professional = Resume.objects.get(id=data['resume_id'])
-        resume_professional.job_category_id = data['job_category']
-        resume_professional.matchup_career_id = data['matchup_career']
-        resume_professional.income = data['income']
-        resume_professional.save()
 
-        for role in data['role']:
-            resume_role = Resume_role.objects.create()
-            resume_role.resume_id = data['resume_id']
-            resume_role.role_id = role
-            resume_role.save()
+        user_data={
+            'job_category':{
+                'id':"",
+                'name':""
+            },
+            'role':[],
+            'career':{
+                'id':"",
+                'name':""
+            },
+            'skill':[]
+        }
 
-        for sk in data['skill']:
-            matchup_skill = Matchup_skill.objects.create()
-            matchup_skill.resume_id = data['resume_id']
-            matchup_skill.skill = sk
-            matchup_skill.save()
-
-        return HttpResponse(status=200)
-
-class UserMatchUpDetailView(View):
-    @login_decorator
-    def get(self, request):
-        data = json.loads(request.body)
-        print(data)
         if Resume.objects.filter(id=data['resume_id']).exists():
-            resume_infor = Resume.objects.select_related('job_category').prefetch_related('resume_resume_role').prefetch_related('matchup_skill_set').get(id=data['resume_id'])
-
-            data ={
-                'job_category':resume_infor.job_category.name,
-                'role':[infor['name'] for infor in resume_infor.resume_resume_role.values('name')],
-                'income':resume_infor.income,
-                'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
-            }
-            return JsonResponse({'data':data}, status=200)
-        else:
-            data={
-                'job_category':"",
-                'role':[],
-                'income':"",
-                'skill':[]
-            }
-            return JsonResponse({'data':data}, status=200)
+            if Resume.objects.get(id=data['resume_id']).is_job_category==1:
+                resume_infor = (
+                    Resume.objects.select_related('job_category')
+                    .select_related('matchup_career')
+                    .prefetch_related('resume_resume_role','matchup_skill_set')
+                    .get(id=data['resume_id']))
+                user_data ={
+                    'job_category':{
+                        'id':resume_infor.job_category.id,
+                        'name':resume_infor.job_category.name
+                    },
+                    'role':[infor for infor in resume_infor.resume_resume_role.values('id','name')],
+                    'career':{
+                        'id':resume_infor.matchup_career.id,
+                        'name':resume_infor.matchup_career.year
+                    },
+                    'skill':[infor['skill'] for infor in resume_infor.matchup_skill_set.values('skill')]
+                }
+                return JsonResponse({'data':user_data}, status=200)
+        return JsonResponse({'data':user_data}, status=200)
 
 class UserMatchUpResumeView(View):
     @login_decorator
     def get(self, request, main_resume_id):
+
         mainResume=Resume.objects.prefetch_related('education_set').prefetch_related('career_set').get(id=main_resume_id)
 
         if len(mainResume.education_set.values())!=0:
@@ -699,23 +771,24 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-    def get_reward_currency(position_id):
-        position=Position.objects.get(id=position_id)
-        currency=position.country.english_currency
-        reward=format(position.total, ',')
+def get_reward_currency(position_id):
+    position=Position.objects.get(id=position_id)
+    currency=position.country.english_currency
+    reward=format(position.total, ',')
 
-        if position.country.id==3 or position.country.id==4 or position.country.id==6:
-            total_reward=reward+currency
-            return total_reward
-        else:
-            total_reward=currency+reward
-            return total_reward
+    if position.country.id==3 or position.country.id==4 or position.country.id==6:
+        total_reward=reward+currency
+        return total_reward
+    else:
+        total_reward=currency+reward
+        return total_reward
 
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
         position_list=Position.objects.filter(bookmark__user_id=request.user.id)
         is_bookmarked=[{
+            'id':position.id,
             'image':position.company.image_set.first().image_url,
             'name':position.name,
             'company':position.company.name,
@@ -725,3 +798,5 @@ class UserBookmark(View):
         }for position in position_list]
 
         return JsonResponse({'bookmark':is_bookmarked}, status=200)
+
+
