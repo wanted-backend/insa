@@ -957,37 +957,62 @@ class CompanyMatchupSearch(View):
 
         return JsonResponse({'resume_search':resume_list}, status=200)
 
-#class ApplicantView(View):
-#    @login_decorator
-#    def get(self, request):
-#        user = request.user
-#       user
+class ApplicantView(View):
+    @login_decorator
+    def get(self, request):
+        user = request.user
 
+        category = request.GET.get('category', None)
+        offset = int(request.GET.get('offset','0'))
+        limit = int(request.GET.get('limit','10'))
 
+        data = []
 
+        companies = Company.objects.prefetch_related('position_set').get(user_id = user.id)
 
+        for position in companies.position_set.values('id'):
+            volunteers = (
+                Volunteers.objects
+                .filter(position_id=position['id'])
+                .order_by('-created_at')
+                .values('id','user__name','resume__id','resume__is_matchup' )
+            )
+            for user in list(volunteers):
 
+                if category == 'matchup':
+                    if user['resume__is_matchup']==True:
+                        user['user__name']=list(user['user__name'])[0]
+                        data.append(user)
+                else:
+                    user['user__name']=list(user['user__name'])[0]
+                    data.append(user)
 
+        return JsonResponse(
+            {'volunteer':data[offset:offset+limit],'max_length':len(data)}, status=200)
 
+class ApplicantDetailView(View):
 
+    @login_decorator
+    def get(self, request, volunteer_id):
 
+        volunteers = (
+            Volunteers.objects
+            .select_related('user','resume')
+            .get(id=volunteer_id)
+        )
 
+        data ={
+            "name":list(volunteers.user.name)[0],
+            "created_at":volunteers.created_at,
+            "is_matchup":volunteers.resume.is_matchup
+        }
 
+        return JsonResponse({'data':data}, status=200)
 
+    @login_decorator
+    def delete(self, request, volunteer_id):
 
+        volunteers = Volunteers.objects.get(id=volunteer_id)
+        volunteers.delete()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return HttpResponse(status = 200)
