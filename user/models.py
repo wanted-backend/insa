@@ -101,7 +101,7 @@ class Resume(models.Model):
     income = models.IntegerField(default=0)
     total_work = models.IntegerField(default=0, null=True)
     is_job_category = models.BooleanField(default=0)
-    roles = models.ManyToManyField('company.Role', through='Resume_role', related_name='resume_resume_role')
+    resume_resume_role = models.ManyToManyField('company.Role', through='Resume_role', related_name='resume_resume_role')
 
     class Meta:
         db_table = 'resumes'
