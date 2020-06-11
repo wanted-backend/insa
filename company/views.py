@@ -383,7 +383,7 @@ class DetailView(View):
                 'city':item.city.name if item.city else None,
                 'country':item.country.name,
                 'reward':get_reward_currency(position.id)
-                }for item in Position.objects.order_by('?') 
+                }for item in Position.objects.order_by('?')
                     if item.role.job_category_id==position.role.job_category_id][:RECOMENDATION_LIMIT]
             }]
         return JsonResponse({'position':position_list}, status=200)
@@ -833,7 +833,7 @@ class FilterView(View):
             'city':[city.name for city in country.city_set.all()]
             }for country in Country.objects.all()]
         career=[level.year for level in Matchup_career.objects.all()]
-        
+
         return JsonResponse({'country_city':city_by_country, 'career':career}, status=200)
 
 class TagView(View):
@@ -898,7 +898,7 @@ class CompanyMatchupSearch(View):
         start_date=datetime.datetime(int(start_year), int(start_month), day)
 
         return monthdelta.monthmod(start_date, end_date)[0].months
-    
+
     @login_decorator
     def get(self, request):
         offset=request.GET.get('offset', 0)
@@ -923,36 +923,66 @@ class CompanyMatchupSearch(View):
             'skill':[skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
             'school':resume.education_set.first().school,
             'specialism':resume.education_set.first().specialism
-            }for resume in resume_search.order_by('-created_at')[offset:offset+limit]] 
+            }for resume in resume_search.order_by('-created_at')[offset:offset+limit]]
 
         return JsonResponse({'resume_search':resume_list}, status=200)
 
+class ApplicantView(View):
+    @login_decorator
+    def get(self, request):
+        user = request.user
 
+        category = request.GET.get('category', None)
+        offset = int(request.GET.get('offset','0'))
+        limit = int(request.GET.get('limit','10'))
 
+        data = []
 
+        companies = Company.objects.prefetch_related('position_set').get(user_id = user.id)
 
+        for position in companies.position_set.values('id'):
+            volunteers = (
+                Volunteers.objects
+                .filter(position_id=position['id'])
+                .order_by('-created_at')
+                .values('id','user__name','resume__id','resume__is_matchup' )
+            )
+            for user in list(volunteers):
 
+                if category == 'matchup':
+                    if user['resume__is_matchup']==True:
+                        user['user__name']=list(user['user__name'])[0]
+                        data.append(user)
+                else:
+                    user['user__name']=list(user['user__name'])[0]
+                    data.append(user)
 
+        return JsonResponse(
+            {'volunteer':data[offset:offset+limit],'max_length':len(data)}, status=200)
 
+class ApplicantDetailView(View):
 
+    @login_decorator
+    def get(self, request, volunteer_id):
 
+        volunteers = (
+            Volunteers.objects
+            .select_related('user','resume')
+            .get(id=volunteer_id)
+        )
 
+        data ={
+            "name":list(volunteers.user.name)[0],
+            "created_at":volunteers.created_at,
+            "is_matchup":volunteers.resume.is_matchup
+        }
 
+        return JsonResponse({'data':data}, status=200)
 
+    @login_decorator
+    def delete(self, request, volunteer_id):
 
+        volunteers = Volunteers.objects.get(id=volunteer_id)
+        volunteers.delete()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return HttpResponse(status = 200)
