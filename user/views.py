@@ -113,7 +113,7 @@ class LogInView(View):
 
                 if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
                     token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
-
+                    
                     Security.objects.create(
                         user_id = user.id,
                         user_ip = request.META['REMOTE_ADDR'],
@@ -122,6 +122,20 @@ class LogInView(View):
                     )
                     return JsonResponse({'token': token.decode('utf-8')}, status=200)
                 return JsonResponse({'MESSAGE':'INVALID'}, status=401)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
+
+class IsAdminToken(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'token' in data:
+                token = data['token']
+                user_id = jwt.decode(token, SECRET_KEY, algorithm='HS256')['id']
+                company = Company.objects.filter(user_id=user_id)
+                if company.exists():
+                    return JsonResponse({'MESSAGE': True}, status=200)
+                return JsonResponse({'MESSAGE': False}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 

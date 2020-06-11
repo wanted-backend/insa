@@ -1,8 +1,9 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView
+from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, IsAdminToken
 
 urlpatterns = [
+    path('/is/admin', IsAdminToken.as_view()),
     path('/exists', UserEmailExists.as_view()),
     path('/admin/exists', AdminExists.as_view()),
     path('/register', UserRegisterView.as_view()),
