@@ -452,20 +452,20 @@ class HomeView(View):
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set','role').all()
         network_item = Position_item.objects.filter(
-            Q(start_date__lt=timezone.now()) & 
-            Q(end_date__gt=timezone.now()) & 
+            Q(start_date__lt=timezone.now()) &
+            Q(end_date__gt=timezone.now()) &
             Q(item_id=2)) if Position_item.objects.filter(
-                Q(start_date__lt=timezone.now()) & 
-                Q(end_date__gt=timezone.now()) & 
-                Q(item_id=2)) else None 
-        
+                Q(start_date__lt=timezone.now()) &
+                Q(end_date__gt=timezone.now()) &
+                Q(item_id=2)) else None
+
         network_ad = [{
             "id"             : item.id,
             "img"            : item.image_url,
             "title"          : item.title,
             "subTitle"       : item.description,
         }for item in network_item.order_by('?')][:4] if network_item else ''
-        
+
         user_recomended_position = [{
             "id"             : position.id,
             "image"          : position.company.image_set.first().image_url,
@@ -589,7 +589,7 @@ class PositionMain(View):
             0:city_filter.filter(Q(entry=True) | Q(min_level=0)),
             10:city_filter.filter(min_level__lte=year)
         }.get(year, year_filter)
-        
+
         return self.sort_position(sort_by, year)
 
     def filter_city(self, city, year, sort_by, country_filter):
@@ -927,7 +927,7 @@ class CompanyMatchupSearch(View):
         else:
             keyword_filter=resume_list
         return self.filter_country(country, year_from, year_to, keyword_filter)
-    
+
     def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
         resume=Resume.objects.all()
         resume_list={
@@ -937,7 +937,7 @@ class CompanyMatchupSearch(View):
             4:resume.filter(Q(reading__company_id=company_id) & Q(reading__read=1)),
             5:resume.filter(proposal__company_id=company_id)
         }.get(resume_list, resume)
-        
+
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
@@ -980,15 +980,19 @@ class CompanyMatchupSearch(View):
 class ApplicantView(View):
     @login_decorator
     def get(self, request):
-        user = request.user
 
-        category = request.GET.get('category', None)
-        offset = int(request.GET.get('offset','0'))
-        limit = int(request.GET.get('limit','10'))
+        user        = request.user
+        category    = request.GET.get('category', None)
+        offset      = int(request.GET.get('offset','0'))
+        limit       = int(request.GET.get('limit','10'))
 
-        data = []
-
-        companies = Company.objects.prefetch_related('position_set').get(user_id = user.id)
+        data        = []
+        companies   = (
+            Company
+            .objects
+            .prefetch_related('position_set')
+            .get(user_id = user.id)
+        )
 
         for position in companies.position_set.values('id'):
             volunteers = (
@@ -998,7 +1002,6 @@ class ApplicantView(View):
                 .values('id','user__name','resume__id','resume__is_matchup' )
             )
             for user in list(volunteers):
-
                 if category == 'matchup':
                     if user['resume__is_matchup']==True:
                         user['user__name']=list(user['user__name'])[0]
@@ -1021,10 +1024,10 @@ class ApplicantDetailView(View):
             .get(id=volunteer_id)
         )
 
-        data ={
-            "name":list(volunteers.user.name)[0],
-            "created_at":volunteers.created_at,
-            "is_matchup":volunteers.resume.is_matchup
+        data = {
+            "name"      : list(volunteers.user.name)[0],
+            "created_at": volunteers.created_at,
+            "is_matchup": volunteers.resume.is_matchup
         }
 
         return JsonResponse({'data':data}, status=200)
