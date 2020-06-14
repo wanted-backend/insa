@@ -431,14 +431,14 @@ class ThemeList(View):
         }
 
         themelist = [{
-            "id"          : position.id,
-            "image"       : position.company.image_set.all().first().image_url,
-            "name"        : position.name,
-            "company"     : position.company.name,
-            "city"        : position.city.name if position.city else None,
-            "country"     : position.city.country.name if position.city else None,
-            "total_reward": get_reward_currency(position.id)
-		} for position in themes_list[offset:limit]]
+            "id"                      : position.id,
+            "image"                   : position.company.image_set.all().first().image_url,
+            "name"                    : position.name,
+            "company"                 : position.company.name,
+            "city"                    : position.city.name if position.city else None,
+            "country"                 : position.city.country.name if position.city else None,
+            "total_reward"            : get_reward_currency(position.id)
+        } for position in themes_list[offset:limit]]
 
         return JsonResponse({"theme_top":themetop, "theme_list":themelist},status=200)
 
@@ -647,27 +647,47 @@ class JobAdPosition(View):
 
         try:
             user = request.user
-            company_positions = Company.objects.prefetch_related('position_set').get(user_id=user.id).position_set.all()
+            company_positions = Company.objects.prefetch_related('position_set').get(user_id=1).position_set.all()
             # 테스트할때 기업회원 로그인 후 회사 정보 입력해야 함
             positions = [{
                 "id"            : position.id,
                 "name"          : position.name,
                 "image"         : position.company.image_set.all().first().image_url,
                 "city"          : position.city.name if position.city else None,
-                "country"       : position.country.name if postion.city else None,
-                "total_reward"  : get_reward_currency(postion.id)
+                "country"       : position.country.name if position.city else None,
+                "total_reward"  : get_reward_currency(position.id)
             }for position in company_positions]
         except:
             return JsonResponse({ "positions" : '' },status=200)
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-
+    
+    @login_decorator
+    def get(self,request):
+        
+        network = Network.objects.filter(item_id=1)
+        
+        network_item = [{
+            "id"               : item.id,
+            "period"           : item.period,
+            "displayed_amount" : item.displayed_amount,
+            "item_id"          : item.item_id,
+        }for item in network]
+        
+        return JsonResponse({"item" : network_item},status=200)
+    
     @login_decorator
     def post(self,request):
 
         data = json.loads(request.body)
-
+        # 들어오는 정보
+        # {
+        #     "position_id"   : id, # 선택된 포지션 id
+        #     "position_name" : name, # 포지션 이름
+        #     "selected"      : item_id # 선택한 아이템 id
+        # }
+        # 위 정보 기반으로 이름 갯수 가격 계산
         front = 'http://localhost:8000' # 준영님 주소
 
         request_url = "https://kapi.kakao.com/v1/payment/ready"
@@ -717,7 +737,7 @@ class JobAdPurchased(View):
                 start_date = items['start_date'],  # 날짜 받는 방식 이야기
                 end_date   = datetime.timedelta(items['end_date']),
             )
-
+            
         return HttpResponse(status=200)
 
 class NetworkAd(View):
