@@ -158,7 +158,6 @@ class Bookmark(models.Model):
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=1)
 
     class Meta:
         db_table = 'bookmarks'
@@ -223,7 +222,6 @@ class Volunteers(models.Model):
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True, related_name='volunteers')
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=1)
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
 
     class Meta:
