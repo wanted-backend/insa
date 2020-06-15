@@ -444,7 +444,7 @@ class ThemeList(View):
 
 class HomeView(View):
 
-    @login_check
+    @login_decorator
     def get(self,request):
 
         user = request.user
@@ -662,21 +662,21 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-    
+
     @login_decorator
     def get(self,request):
-        
+
         network = Network.objects.filter(item_id=1)
-        
+
         network_item = [{
             "id"               : item.id,
             "period"           : item.period,
             "displayed_amount" : item.displayed_amount,
             "item_id"          : item.item_id,
         }for item in network]
-        
+
         return JsonResponse({"item" : network_item},status=200)
-    
+
     @login_decorator
     def post(self,request):
 
@@ -737,7 +737,7 @@ class JobAdPurchased(View):
                 start_date = items['start_date'],  # 날짜 받는 방식 이야기
                 end_date   = datetime.timedelta(items['end_date']),
             )
-            
+
         return HttpResponse(status=200)
 
 class NetworkAd(View):
