@@ -88,22 +88,6 @@ class AdminRegisterView(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class AdminExists(View):
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            print(data)
-            user = User.objects.prefetch_related('company').get(email=data['email'])
-            if user.job_position or user.company:
-                return JsonResponse({'MESSAGE':'True'}, status=200)
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except User.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except User.company.RelatedObjectDoesNotExist:
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
-
 class LogInView(View):
     def post(self, request):
         data = json.loads(request.body)
