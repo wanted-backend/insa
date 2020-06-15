@@ -1,6 +1,11 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, IsAdminToken, MatchUpRegistrationView, UserImageUploadView
+from .views import (UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, 
+                    UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, 
+                    ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, 
+                    MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, 
+                    CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, IsAdminToken, 
+                    MatchUpRegistrationView, UserImageUploadView, UserApplyView)
 
 urlpatterns = [
     path('/is/admin', IsAdminToken.as_view()),
@@ -28,4 +33,5 @@ urlpatterns = [
     path('/resumeRole/<str:main_resume_id>', MatchUpDetailGetView.as_view()),
     path('/matchupRegistration', MatchUpRegistrationView.as_view()),
     path('/userImage', UserImageUploadView.as_view()),
+    path('/apply', UserApplyView.as_view())
 ]
