@@ -8,7 +8,7 @@ class User(models.Model):
     password = models.CharField(max_length=500)
     agreement = models.BooleanField(default=0)
     contact = models.CharField(max_length=50, null=True)
-    image_url = models.URLField(max_length=2000, null=True)
+    image_url = models.URLField(max_length=2000, default ="https://s3.ap-northeast-2.amazonaws.com/wanted-public/profile_default.png")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     fail_count = models.IntegerField(default=0)

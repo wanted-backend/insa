@@ -88,22 +88,6 @@ class AdminRegisterView(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class AdminExists(View):
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            print(data)
-            user = User.objects.prefetch_related('company').get(email=data['email'])
-            if user.job_position or user.company:
-                return JsonResponse({'MESSAGE':'True'}, status=200)
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except User.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except User.company.RelatedObjectDoesNotExist:
-            return JsonResponse({'MESSAGE': 'False'}, status=401)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
-
 class LogInView(View):
     def post(self, request):
         data = json.loads(request.body)
@@ -142,33 +126,34 @@ class IsAdminToken(View):
 class LikedCompanies(View):
     @login_decorator
     def get(self, request):
-        companies = Want.objects.filter(user_id=request.user.id)
-        data = [
-            {
-                'id':want.id,
-                'company_id':want.company.id,
-                'name':want.company.name,
-                'logo':want.company.image_url,
-                'date':want.created_at
-            } for want in companies
-        ]
-        return JsonResponse({'companies':data}, status=200)
+        try:
+            companies = Want.objects.filter(user_id=request.user.id)
+            data = [
+                {
+                    'id':want.id,
+                    'company_id':want.company.id,
+                    'name':want.company.name,
+                    'logo':want.company.image_url,
+                    'date':want.created_at
+                } for want in companies
+            ]
+            return JsonResponse({'companies':data}, status=200)
+        except Want.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID WANT'}, status=401)
 
 class ResumeMainView(View):
     @login_decorator
     def get(self, request):
 
         user = request.user
-        resumeMain = (
-            Resume.objects.filter(user_id=user.id).
-            values('id',
-                   'title',
-                   'created_at',
-                   'status',
-                   'is_matchup')
+        resumeMain =(
+            Resume.objects.filter(user_id=user.id)
+            .values('id', 'title', 'created_at', 'status', 'is_matchup')
         )
+
         for resume in resumeMain:
-            if resume['title']  == None:
+            print(resume['title'])
+            if resume['title']== None:
                 resume['title']=""
             if resume['status'] == False:
                 resume['status']="작성 완료"
@@ -501,16 +486,19 @@ class CareerResultView(View):
 class CompanyInterviewResume(View):
     @login_decorator
     def get(self, request):
-        resume      = Resume.objects.get(user_id=request.user.id, is_matchup=True)
-        interviews  = Proposal.objects.filter(resume_id=resume.id)
-        data = [
-            {
-                'name'  :interview.company.name,
-                'logo'  :interview.company.image_url,
-                'date'  :interview.created_at
-            } for interview in interviews
-        ]
-        return JsonResponse({'is_resume_request':data}, status=200)
+        try:
+            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+            interviews = Proposal.objects.filter(resume_id=resume.id)
+            data = [
+                {
+                    'name':interview.company.name,
+                    'logo':interview.company.image_url,
+                    'date':interview.created_at
+                } for interview in interviews
+            ]
+            return JsonResponse({'is_resume_request':data}, status=200)
+        except Resume.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class UserMatchUpView(View):
     @login_decorator
@@ -595,16 +583,19 @@ class MatchUpDetailGetView(View):
 class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
-        resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
-        requests_resume = Company_matchup.objects.filter(resume_id=resume.id)
-        data = [
-            {
-                'name':request.company.name,
-                'logo':request.company.image_url,
-                'date':request.created_at
-            } for request in requests_resume
-        ]
-        return JsonResponse({'is_resume_request':data}, status=200)
+        try:
+            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+            requests_resume = Company_matchup.objects.filter(resume_id=resume.id)
+            data = [
+                {
+                    'name':request.company.name,
+                    'logo':request.company.image_url,
+                    'date':request.created_at
+                } for request in requests_resume
+            ]
+            return JsonResponse({'is_resume_request':data}, status=200)
+        except Resume.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class UserMatchUpDetailView(View):
     @login_decorator
@@ -826,4 +817,20 @@ class UserBookmark(View):
 
         return JsonResponse({'bookmark':is_bookmarked}, status=200)
 
+class UserImageUploadView(View):
+    @login_decorator
+    def post(self, request):
 
+        user = request.user
+        data = json.loads(request.body)
+        user.image_url = "/static/"+data['img_name']
+        user.save()
+
+        return JsonResponse({'data':user.image_url}, status = 200)
+
+    @login_decorator
+    def get(self, request):
+
+        user = request.user
+
+        return JsonResponse({'data':user.image_url}, status = 200)
