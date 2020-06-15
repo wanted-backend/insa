@@ -25,11 +25,7 @@ def getGPS_coordinates_for_KAKAO(address):
         'Authorization': 'KakaoAK {}'.format(config.MYAPP_KEY['MYAPP_KEY'])
     }
     address = address.encode("utf-8")
-    p = urllib.parse.urlencode(
-        {
-            'query': address
-        }
-    )
+    p = urllib.parse.urlencode({'query': address})
     api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
     lat = api.json()['documents'][0]['x']
     lng = api.json()['documents'][0]['y']
@@ -76,28 +72,31 @@ class CompanyRegister(View):
 
     @login_decorator
     def get(self, request):
-        user = request.user
-        company = Company.objects.get(user_id=user.id)
-        workplace = Workplace.objects.get(company_id=company.id)
-        data = [
-            {
-                'name':company.name,
-                'description':company.description,
-                'website':company.website,
-                'workplace':workplace.address,
-                'city':workplace.city.name,
-                'country':workplace.city.country.name,
-                'registration_number':company.registration_number,
-                'revenue':company.revenue,
-                'industry':company.industry.name,
-                'employee':company.employee.number,
-                'foundation_year':company.foundation_year.name,
-                'email':company.email,
-                'contact_number':company.contact_number,
-                'keyword':company.keyword,
-            }
-        ]
-        return JsonResponse({'company':data}, status=200)
+        try:
+            user = request.user
+            company = Company.objects.get(user_id=user.id)
+            workplace = Workplace.objects.get(company_id=company.id)
+            data = [
+                {
+                    'name':company.name,
+                    'description':company.description,
+                    'website':company.website,
+                    'workplace':workplace.address,
+                    'city':workplace.city.name,
+                    'country':workplace.city.country.name,
+                    'registration_number':company.registration_number,
+                    'revenue':company.revenue,
+                    'industry':company.industry.name,
+                    'employee':company.employee.number,
+                    'foundation_year':company.foundation_year.name,
+                    'email':company.email,
+                    'contact_number':company.contact_number,
+                    'keyword':company.keyword,
+                }
+            ]
+            return JsonResponse({'company':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class CompanyInfomationModify(View):
     @login_decorator
@@ -166,7 +165,7 @@ class CompanyImages(View):
         ]
         return JsonResponse({'images': data}, status=200)
 
-class CompanyImageModefy(View):
+class CompanyImageModify(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -297,6 +296,8 @@ class CompanyLikedResume(View):
                 return JsonResponse({'liked_matchup':data}, status=200)
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class MatchupList(View):
     @login_decorator
@@ -539,6 +540,8 @@ class CompanyRequestResume(View):
             return JsonResponse({'is_resume_request':data}, status=200)
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
     @login_decorator
     def post(self, request):
@@ -829,6 +832,8 @@ class CompanyReadingResume(View):
             return JsonResponse({'reading_matchup':data}, status=200)
         except ValueError:
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class CompanyProposalsResume(View):
     @login_decorator
@@ -853,20 +858,23 @@ class CompanyProposalsResume(View):
 
     @login_decorator
     def get(self, request):
-        interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
-        data = [
-            {
-                'id':interview.id,
-                'name':interview.resume.user.name,
-                'description':interview.resume.description,
-                'role':interview.resume.role.name,
-                'career':interview.resume.matchup_career.year,
-                'skills':list(Matchup_skill.objects.filter(resume_id=interview.resume.id).values()),
-                'work_info':list(Career.objects.filter(resume_id=interview.resume.id).values()),
-                'education':interview.resume.school
-            } for interview in interviews
-        ]
-        return JsonResponse({'interview_proposal':data}, status=200)
+        try:
+            interviews = Proposal.objects.filter(company_id=Company.objects.get(user_id=request.user.id).id)
+            data = [
+                {
+                    'id':interview.id,
+                    'name':interview.resume.user.name,
+                    'description':interview.resume.description,
+                    'role':interview.resume.role.name,
+                    'career':interview.resume.matchup_career.year,
+                    'skills':list(Matchup_skill.objects.filter(resume_id=interview.resume.id).values()),
+                    'work_info':list(Career.objects.filter(resume_id=interview.resume.id).values()),
+                    'education':interview.resume.school
+                } for interview in interviews
+            ]
+            return JsonResponse({'interview_proposal':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class FilterView(View):
     def get(self, request):
