@@ -13,11 +13,13 @@ from django.db.models       import Q, Count, F
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
+from iamport                import Iamport
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item , Matchup_item)
+                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration)
+
 
 def getGPS_coordinates_for_KAKAO(address):
     headers = {
@@ -444,7 +446,7 @@ class ThemeList(View):
 
 class HomeView(View):
 
-    @login_check
+    @login_decorator
     def get(self,request):
 
         user = request.user
@@ -502,8 +504,20 @@ class HomeView(View):
             "city"           : recommend.city.name if recommend.city else None,
             "country"        : recommend.city.country.name if recommend.city else None,
             "total_reward"   : get_reward_currency(recommend.id),
-        }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
-
+        }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4] 
+        
+        if len(recommendations_of_the_week) == 0 :
+            
+            recommendations_of_the_week = [{
+                "id" :  reco.id,
+                "image" : reco.company.image_set.first().image_url,
+                "name"  : reco.name,
+                "company" : reco.company.name,
+                "city"    : reco.city.name if reco.city else None,
+                "country" : reco.city.country.name if reco.city else None,
+                "total_reward" : get_reward_currency(reco.id),
+            }for reco in positions.order_by('?')][:4]
+        
         return JsonResponse({"network_item"        : network_ad,
                              "position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
@@ -675,7 +689,7 @@ class JobAdPurchase(View):
             "item_id"          : item.item_id,
         }for item in network]
         
-        return JsonResponse({"item" : network_item},status=200)
+        return JsonResponse({ "item" : network_item },status=200)
     
     @login_decorator
     def post(self,request):
@@ -688,7 +702,7 @@ class JobAdPurchase(View):
         #     "selected"      : item_id # 선택한 아이템 id
         # }
         # 위 정보 기반으로 이름 갯수 가격 계산
-        front = 'http://localhost:8000' # 준영님 주소
+        front = 'http://192.168.219.108:3000' # 준영님 주소
 
         request_url = "https://kapi.kakao.com/v1/payment/ready"
 
@@ -701,47 +715,70 @@ class JobAdPurchase(View):
             'cid'             : "TC0ONETIME",
             'partner_order_id': '1001',
             'partner_user_id' : 'wanted',
-            'item_name'       : data['name'], # 아이템 명 불러오기,
-            'quantity'        : data['period'], # 아이템 불러오기,
-            'total_amount'    : data['item_price'], # 아이템 불러오기,
+            'item_name'       : data['position_name'], # 아이템 명 불러오기,
+            'quantity'        : 1, # 아이템 불러오기,
+            'total_amount'    : 100, # 아이템 불러오기,
             'tax_free_amount' : 0,
-            'vat_amount'      : int(int(data['include_tax']) - int(data['item_price'])),
-            'approval_url'    : front + '/kakaopay/purchase', # 결제성공시 리다이렉트
+            'vat_amount'      : 10,
+            'approval_url'    : front + '/dashboard/ad?match=home', # 결제성공시 리다이렉트
             'fail_url'        : front, # 실패
             'cancel_url'      : front, # 취소
         }
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-
+        
         res = {
             'tid'            : response['tid'],
             'redirect'       : response['next_redirect_pc_url'],
             'created_at'     : response['created_at'],
         }
 
+        Position_item.objects.create(
+            position   = Position.objects.get(id=data['position_id']),
+            item       = Item.objects.get(id=1),     # 1 직무상단 2 네트워크
+            expiration = Expiration.objects.get(id=1),  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
+            start_date = data['start_date'],  
+            end_date   = data['end_date'],
+        )
+        
         return JsonResponse({ "response" : res },status=200)
 
 class JobAdPurchased(View):
-
+    
+    @login_decorator
     def post(self,request):
-
+        
         data = json.loads(request.body)
+        
+        request_url = "https://kapi.kakao.com/v1/payment/approve"
 
-        for items in data:
+        headers1 = {
+            'Authorization'   : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
+            "Content-type"    : 'application/application/x-www-form-urlencoded;charset=utf-8',
+        }
 
-            Position_item.objects.create(
-                position   = items['postions_id'],
-                item       = items['item_id'],     # 1 직무상단 2 네트워크
-                expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
-                start_date = items['start_date'],  # 날짜 받는 방식 이야기
-                end_date   = datetime.timedelta(items['end_date']),
-            )
-            
-        return HttpResponse(status=200)
+        params1 = {
+            'cid'             : "TC0ONETIME",
+            'tid'             : data['tid'], # tid 넘겨 받을 방법 찾아야 함
+            'partner_order_id': '1001',
+            'partner_user_id' : 'wanted',
+            'pg_token'        : data['pg_token'],
+            'total_amount'    : 100,
+        }
+
+        response = requests.post(request_url,params=params1,headers=headers1)
+        response = json.loads(response.text)
+        
+        Is_Paid = False
+        
+        if 'aid' in response:
+            Is_Paid = True
+        
+        return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
 class NetworkAd(View):
-
+    
     def post(self,request):
 
         data = json.loads(request.body)
@@ -752,7 +789,7 @@ class NetworkAd(View):
                                                  Q(email=data['email'])).id,
                 item       = data['item_id'],
                 expiration = data['expiration'],
-                start_date = data['start_date'], # 날짜 받는 방식 이야기
+                start_date = data['start_date'],
                 end_date   = data['end_data'],
                 image_url  = data['image_url'],
                 title      = data['title'],
@@ -778,7 +815,42 @@ class MatchUpItem(View):
         }for plan in item]
 
         return JsonResponse({"plans" : plans} , status=200)
-
+    
+class JobAdState(View):
+    
+    @login_decorator
+    def get(self,request):
+        
+        user = request.user
+        company = Company.objects.get(user_id=user.id)
+        item = Position_item.objects.filter(company_id=company.id)
+        
+        state = [{
+            "id"         : stat.id,
+            "item"       : stat.item_id, # 1 직무상단 2 네트워크 광고
+            "exp"        : stat.expiration_id, # 1 사용전 2 사용중 3 사용완료
+            "start_date" : stat.start_date,
+            "end_date"   : stat.end_date,
+            "click"      : stat.click,
+        }for stat in item]
+        
+        return JsonResponse({"response" : state},status=200)
+    
+class MatchUpItemPurchased(View):
+    
+    def post(self,request):
+        
+        data = json.loads(request.body)
+        
+        DEFAULT_TEST_IMP_KEY = 'imp_apikey'
+        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9O'
+                           'qDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
+        
+        
+    # def get(self,request):
+        
+        
+    
 class CompanyReadingResume(View):
     @login_decorator
     def post(self, request):

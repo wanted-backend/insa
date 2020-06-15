@@ -201,6 +201,7 @@ class Position_item(models.Model):
     title = models.CharField(max_length=50, null=True)
     description = models.CharField(max_length=100, null=True)
     click = models.IntegerField(default=0, null=True)
+    is_valid = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'positions_items'
