@@ -159,16 +159,14 @@ class ResumeMainView(View):
     def get(self, request):
 
         user = request.user
-        resumeMain = (
-            Resume.objects.filter(user_id=user.id).
-            values('id',
-                   'title',
-                   'created_at',
-                   'status',
-                   'is_matchup')
+        resumeMain =(
+            Resume.objects.filter(user_id=user.id)
+            .values('id', 'title', 'created_at', 'status', 'is_matchup')
         )
+
         for resume in resumeMain:
-            if resume['title']  == None:
+            print(resume['title'])
+            if resume['title']== None:
                 resume['title']=""
             if resume['status'] == False:
                 resume['status']="작성 완료"
