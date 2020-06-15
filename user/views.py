@@ -816,3 +816,21 @@ class UserBookmark(View):
         }for position in position_list]
 
         return JsonResponse({'bookmark':is_bookmarked}, status=200)
+
+class UserImageUploadView(View):
+    @login_decorator
+    def post(self, request):
+
+        user = request.user
+        data = json.loads(request.body)
+        user.image_url = "/static/"+data['img_name']
+        user.save()
+
+        return JsonResponse({'data':user.image_url}, status = 200)
+
+    @login_decorator
+    def get(self, request):
+
+        user = request.user
+
+        return JsonResponse({'data':user.image_url}, status = 200)
