@@ -222,6 +222,8 @@ class CompanyLogoModify(View):
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class CompanyImages(View):
     @login_decorator
@@ -282,8 +284,8 @@ class CompanyImageDelete(View):
             if 'image_id' in data:
                 image_id = data['image_id']
                 company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
-                images = company.image_set.filter(company_id=company.id).count()
-                if images == 2:
+                images = company.image_set.filter(company_id=company.id)
+                if images.count() == 2:
                     return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
                 Image.objects.get(id=image_id).delete()
                 data = [
@@ -381,11 +383,16 @@ class PositionList(View):
         data = [
             {
                 'id' : position.id,
-                'image' : position.company.image_set.first().image_url,
+                'image' : position.company.image_set.first().image_url if position.company.image_set.first() else None,
                 'name' : position.name,
                 'company' : position.company.name,
                 'city' : workplace.city.name,
                 'country' : workplace.country.name,
+                'reward' :{
+                    'referrer':position.referrer,
+                    'volunteer':position.volunteer,
+                    'total':position.total
+                }
             } for position in positions
         ]
         return JsonResponse({'company':data}, status=200)
