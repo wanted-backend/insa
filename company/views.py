@@ -386,6 +386,11 @@ class PositionList(View):
                 'company' : position.company.name,
                 'city' : workplace.city.name,
                 'country' : workplace.country.name,
+                'reward' :{
+                    'referrer':position.referrer,
+                    'volunteer':position.volunteer,
+                    'total':position.total
+                }
             } for position in positions
         ]
         return JsonResponse({'company':data}, status=200)
