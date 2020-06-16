@@ -118,7 +118,7 @@ class Position(models.Model):
     role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True)
     workplace = models.ForeignKey('Workplace', on_delete=models.SET_NULL, null=True)
     min_level = models.IntegerField(default=0)
-    max_level = models.IntegerField(default=0)
+    max_level = models.CharField(max_length=50)
     entry = models.BooleanField(default=0)
     mim_wage = models.IntegerField(default=0)
     max_wage = models.IntegerField(default=0)
@@ -158,7 +158,6 @@ class Bookmark(models.Model):
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=1)
 
     class Meta:
         db_table = 'bookmarks'
@@ -223,7 +222,6 @@ class Volunteers(models.Model):
     user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True, related_name='volunteers')
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=1)
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
 
     class Meta:

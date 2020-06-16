@@ -190,7 +190,7 @@ class UserResumeWriteView(View):
         resume = Resume.objects.get(id=main_resume_id)
 
         def judgment(element, affiliation):
-            if element == None:
+            if element == None or element == "":
                 outcome=affiliation
             else:
                 outcome=element
@@ -456,6 +456,7 @@ class ResumeDetailWriteView(View):
             for index_data in data:
                 links       = Link.objects.get(id=index_data['id'])
                 links.url   = index_data['url']
+                links.save()
 
         return HttpResponse(status=200)
 
@@ -501,7 +502,7 @@ class CompanyInterviewResume(View):
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class UserMatchUpView(View):
-    @login_decorator
+
     def get(self, request):
         speclist        = []
         user_career     = Job_category.objects.prefetch_related('role_set')
@@ -769,23 +770,15 @@ class MatchUpRegistrationView(View):
     @login_decorator
     def post(self, request):
 
+        user = request.user
         data = json.loads(request.body)
-        if Resume.objects.filter(is_matchup=True).exists():
-            non_matchup_resume              = Resume.objects.get(is_matchup=True)
-            non_matchup_resume.is_matchup   = False
 
-        matchupResume               = Resume.objects.get(id=data['resume_id'])
-        matchupResume.is_matchup    = True
-        matchupResume.save()
+        user_resume = Resume.objects.filter(user_id=user.id)
+        user_resume.update(is_matchup=False)
 
-        if Matchup_job.objects.filter(resume_id=data['resume_id']).exists():
-            matchupjob  = Matchup_job.objects.get(resume_id=data['resume_id'])
-        else:
-            matchupjob              = Matchup_job.objects.create()
-            matchupjob.resume_id    = data['resume_id']
-
-        matchupjob.job_text_id  = data['job_text']
-        matchupjob.save()
+        matchup_resume  = Resume.objects.get(id= data['resume_id'])
+        matchup_resume.is_matchup   = True
+        matchup_resume.save()
 
         return HttpResponse(status = 200)
 
@@ -800,22 +793,6 @@ def get_reward_currency(position_id):
     else:
         total_reward=currency+reward
         return total_reward
-
-class UserBookmark(View):
-    @login_decorator
-    def get(self, request):
-        position_list=Position.objects.filter(bookmark__user_id=request.user.id)
-        is_bookmarked=[{
-            'id':position.id,
-            'image':position.company.image_set.first().image_url,
-            'name':position.name,
-            'company':position.company.name,
-            'country':position.country.name,
-            'city':position.city.name if position.city else None,
-            'reward':get_reward_currency(position.id)
-        }for position in position_list]
-
-        return JsonResponse({'bookmark':is_bookmarked}, status=200)
 
 class UserImageUploadView(View):
     @login_decorator
@@ -833,4 +810,74 @@ class UserImageUploadView(View):
 
         user = request.user
 
-        return JsonResponse({'data':user.image_url}, status = 200)
+        return JsonResponse({'data':user.image_url,'name':user.name}, status = 200)
+
+class ApplicantResumeView(View):
+    def get(self, request, main_resume_id):
+
+        user_resume = (
+            Resume.objects
+            .select_related('user')
+            .prefetch_related('career_set', 'education_set', 'link_set')
+            .get(id=main_resume_id)
+        )
+
+        user_career = (
+            user_resume.career_set.values
+            (
+                'id',
+                'company',
+                'position',
+                'start_year',
+                'start_month',
+                'end_year',
+                'end_month',
+                'is_working'
+            )
+        )
+
+        careers = []
+
+        for career in user_career:
+            career['result'] = [results for results in Result.objects.filter(career_id=career['id']).values()]
+            careers.append(career)
+
+        data ={
+            'name'      : user_resume.user.name,
+            'email'     : user_resume.email,
+            'contact'   : user_resume.contact,
+            'career'    : careers,
+            'education' : [educations for educations in user_resume.education_set.values()],
+            'link'      : [links for links in user_resume.link_set.values()]
+        }
+
+        return JsonResponse({'data':data}, status = 200)
+
+class UserBookmark(View):
+    @login_decorator
+    def get(self, request):
+        position_list = Position.objects.filter(bookmark__user_id=request.user.id)
+        is_bookmarked =[{
+            'id' : position.id,
+            'image' : position.company.image_set.first().image_url,
+            'name' : position.name,
+            'company' : position.company.name,
+            'country' : position.country.name,
+            'city' : position.city.name if position.city else None,
+            'total_reward' : get_reward_currency(position.id)
+        } for position in position_list]
+
+        return JsonResponse({'bookmark' : is_bookmarked}, status = 200)
+
+class UserApplyView(View):
+    @login_decorator
+    def get(self, request):
+        user_id = request.user.id
+        applied_position = Volunteers.objects.filter(user_id = user_id)
+        applied_list =[{
+            'company' : position.position.company.name,
+            'position' : position.position.name,
+            'applied_at' : position.created_at
+        } for position in applied_position]
+
+        return JsonResponse({'applied_position' : applied_list}, status = 200)
