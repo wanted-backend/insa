@@ -32,6 +32,17 @@ def getGPS_coordinates_for_KAKAO(address):
     result = [lat, lng]
     return result
 
+class EmployeeView(View):
+    def get(self, request):
+        employees = Employee.objects.all()
+        data = [
+            {
+                'id':employee.id,
+                'employee':employee.number
+            } for employee in employees
+        ]
+        return JsonResponse({'employees':data}, status=401)
+
 class CompanyRegister(View):
     @login_decorator
     def post(self, request):
@@ -43,8 +54,8 @@ class CompanyRegister(View):
             Company(
                 user_id = request.user.id,
                 name = data['name'],
-                registration_number = data['registration_number'],
-                revenue = data['revenue'],
+                registration_number = int(data['registration_number']),
+                revenue = int(data['revenue']),
                 industry = Industry.objects.get(name=data['industry']),
                 employee = Employee.objects.get(number=data['employee']),
                 description = data['description'],
@@ -61,6 +72,7 @@ class CompanyRegister(View):
             Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city = City.objects.get(name=data['city']),
+                country = Country.objects.get(name=data['country']),
                 address = address,
                 represent = data['represent'],
                 lat = coordinates[0],
@@ -75,15 +87,19 @@ class CompanyRegister(View):
         try:
             user = request.user
             company = Company.objects.get(user_id=user.id)
-            workplace = Workplace.objects.get(company_id=company.id)
+            workplace = Workplace.objects.filter(company_id=company.id)
             data = [
                 {
+                    'id':company.id,
                     'name':company.name,
                     'description':company.description,
                     'website':company.website,
-                    'workplace':workplace.address,
-                    'city':workplace.city.name,
-                    'country':workplace.city.country.name,
+                    'workplace':[(
+                                place.city.country.name,
+                                place.city.name,
+                                place.address,
+                                place.represent
+                            ) for place in workplace],
                     'registration_number':company.registration_number,
                     'revenue':company.revenue,
                     'industry':company.industry.name,
@@ -95,6 +111,48 @@ class CompanyRegister(View):
                 }
             ]
             return JsonResponse({'company':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
+
+class WorkplaceView(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            workplace = Workplace.objects.filter(company_id=company.id)
+            data = [
+                {
+                    'id':place.id,
+                    'company_id':place.company.id,
+                    'company':place.company.name,
+                    'address':place.address,
+                    'lat':place.lat,
+                    'lng':place.lng,
+                    'represent':place.represent
+                } for place in workplace
+            ]
+            return JsonResponse({'company':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
+        
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            address = data['address']
+            company = Company.objects.get(user_id=request.user.id)
+            coordinates = getGPS_coordinates_for_KAKAO(address)
+            Workplace.objects.create(
+                company_id = Company.objects.get(user_id=request.user.id).id,
+                city = City.objects.get(name=data['city']),
+                country = Country.objects.get(name=data['country']),
+                address = address,
+                lat = coordinates[0],
+                lng = coordinates[1]
+            )
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
@@ -146,9 +204,9 @@ class CompanyImages(View):
             company = Company.objects.get(user_id=request.user.id)
             Image.objects.create(
                 company_id=company.id,
-                image_url=data['image_url']
+                image_url='/static/'+data['image_url']
             )
-            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+            return JsonResponse({'image':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
@@ -199,54 +257,96 @@ class CompanyImageDelete(View):
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
 class CompanyPosition(View):
-	@login_decorator
-	def post(self, request):
-		data = json.loads(request.body)
-		try:
-			company = Company.objects.get(user_id=request.user.id)
-			is_entry_min = 0 if data['entry']==True else data['min_level']
-			is_entry_max = 1 if data['entry']==True else data['max_level']
-			is_always = None if data['always']==True else data['expiry_date']
-			is_preferred = None if data['preferred']==True else data['preferred']
-
-			Position.objects.create(
-				company = company,
-				role = Role.objects.get(name=data['role']),
-				min_level = is_entry_min,
-				max_level = is_entry_max,
-				entry = data['entry'],
-				mim_wage = data['mim_wage'],
-				max_wage = data['mim_wage'],
-                                expiry_date = is_always,
-				always = data['always'],
-				workplace = Workplace.objects.get(company_id=company.id),
-				name = data['name'],
-				description = data['description'],
-				responsibility = data['responsibility'],
-				qualification = data['qualification'],
-				preferred = is_preferred,
-				benefit = data['benefit'],
-				referrer = data['referrer'],
-				volunteer = data['volunteer'],
-				total = data['total']
-			)
-			return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-		except KeyError:
-			return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+    @login_decorator
+    def get(self, request):
+        company = Company.objects.get(user_id=request.user.id)
+        position = Position.objects.get(company_id=company.id)
+        address = Workplace.objects.get(company_id=company.id)
+        is_always = '상시' if position.always==True else position.expiry_date
+        is_entry_min = 0 if position.entry==True else position.min_level
+        is_entry_max = 1 if position.entry==True else position.max_level
+        is_preferred = None if position.preferred==True else position.preferred
+        try:
+            data = [
+                {
+                    'id':position.id,
+                    'company_id':company.id,
+                    'company':company.name,
+                    'name':position.name,
+                    'role':position.role.name,
+                    'description':position.description,
+                    'responsibility':position.responsibility,
+                    'preferred':is_preferred,
+                    'benefit':position.benefit,
+                    'expiry_date':is_always,
+                    'address':address.address,
+                    'min_level':is_entry_min,
+                    'max_level':is_entry_max
+                }
+            ]
+            return JsonResponse({'position':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
+        except Position.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID POSITION'}, status=401)
+        
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            is_entry_min = 0 if data['entry']==True else data['min_level']
+            is_entry_max = 1 if data['entry']==True else data['max_level']
+            is_always = None if data['always']==True else data['expiry_date']
+            is_preferred = None if data['preferred']==True else data['preferred']
+            
+            Position.objects.create(
+                company = company,
+                min_level = is_entry_min,
+                max_level = is_entry_max,
+                entry = data['entry'],
+                mim_wage = data['mim_wage'],
+                max_wage = data['mim_wage'],
+                expiry_date = is_always,
+                always = data['always'],
+                workplace = Workplace.objects.get(company_id=company.id),
+                name = data['name'],
+                description = data['description'],
+                responsibility = data['responsibility'],
+                qualification = data['qualification'],
+                preferred = is_preferred,
+                benefit = data['benefit'],
+                referrer = data['referrer'],
+                volunteer = data['volunteer'],
+                total = data['total']
+            )
+            for role in data['role']:
+                position = Position.objects.get(company_id=company.id)
+                position.role = Role.objects.get(name=role)
+                position.save()
+            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
 class PositionList(View):
     @login_decorator
     def get(self, request):
         user = request.user
-        company = Company.objects.prefetch_related('position_set').get(user_id=user.id)
+        company = Company.objects.prefetch_related('position_set', 'image_set').get(user_id=user.id)
         positions = company.position_set.filter(company_id=company.id)
+        workplace = Workplace.objects.get(company_id=company.id)
         data = [
-                {
-                    'name':position.name,
-                    'expiry_date':position.expiry_date if position.expiry_date else position.always,
-                } for position in positions
-                ]
-
+            {
+                'id' : position.id,
+                'image' : position.company.image_set.first().image_url,
+                'name' : position.name,
+                'company' : position.company.name,
+                'city' : workplace.city.name,
+                'country' : workplace.country.name,
+            } for position in positions
+        ]
         return JsonResponse({'company':data}, status=200)
 
 class CompanyLikedResume(View):
@@ -318,16 +418,16 @@ class MatchupList(View):
         return JsonResponse({'matchup_list':data}, status=200)
 
 def get_reward_currency(position_id):
-            position = Position.objects.get(id=position_id)
-            currency = position.country.english_currency
-            reward = format(position.total, ',')
+    position = Position.objects.get(id=position_id)
+    currency = position.country.english_currency
+    reward = format(position.total, ',')
 
-            if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
-                total_reward = reward+currency
-                return total_reward
-            else:
-                total_reward = currency+reward
-                return total_reward
+    if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
+        total_reward = reward+currency
+        return total_reward
+    else:
+        total_reward = currency+reward
+        return total_reward
 
 class DetailView(View):
     @login_check
