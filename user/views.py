@@ -779,15 +779,6 @@ class MatchUpRegistrationView(View):
         matchupResume.is_matchup    = True
         matchupResume.save()
 
-        if Matchup_job.objects.filter(resume_id=data['resume_id']).exists():
-            matchupjob  = Matchup_job.objects.get(resume_id=data['resume_id'])
-        else:
-            matchupjob              = Matchup_job.objects.create()
-            matchupjob.resume_id    = data['resume_id']
-
-        matchupjob.job_text_id  = data['job_text']
-        matchupjob.save()
-
         return HttpResponse(status = 200)
 
 def get_reward_currency(position_id):
