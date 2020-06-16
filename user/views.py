@@ -456,6 +456,7 @@ class ResumeDetailWriteView(View):
             for index_data in data:
                 links       = Link.objects.get(id=index_data['id'])
                 links.url   = index_data['url']
+                links.save()
 
         return HttpResponse(status=200)
 
@@ -501,7 +502,7 @@ class CompanyInterviewResume(View):
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class UserMatchUpView(View):
-    @login_decorator
+
     def get(self, request):
         speclist        = []
         user_career     = Job_category.objects.prefetch_related('role_set')
@@ -818,6 +819,47 @@ class UserImageUploadView(View):
 
         return JsonResponse({'data':user.image_url}, status = 200)
 
+class ApplicantResumeView(View):
+    def get(self, request, main_resume_id):
+
+        user_resume = (
+            Resume.objects
+            .select_related('user')
+            .prefetch_related('career_set', 'education_set', 'link_set')
+            .get(id=main_resume_id)
+        )
+
+        user_career = (
+            user_resume.career_set.values
+            (
+                'id',
+                'company',
+                'position',
+                'start_year',
+                'start_month',
+                'end_year',
+                'end_month',
+                'is_working'
+            )
+        )
+
+        careers = []
+
+        for career in user_career:
+            career['result'] = [results for results in Result.objects.filter(career_id=career['id']).values()]
+            careers.append(career)
+
+        data ={
+            'name'      : user_resume.user.name,
+            'email'     : user_resume.email,
+            'contact'   : user_resume.contact,
+            'career'    : careers,
+            'education' : [educations for educations in user_resume.education_set.values()],
+            'link'      : [links for links in user_resume.link_set.values()]
+        }
+
+        return JsonResponse({'data':data}, status = 200)
+
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
@@ -846,4 +888,3 @@ class UserApplyView(View):
         } for position in applied_position]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)
-    
