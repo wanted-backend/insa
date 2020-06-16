@@ -3,11 +3,11 @@ from django.urls import path
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         PositionBookmarkView, PositionApplyView, CompanyRequestResume, CompanyReadingResume, \
         JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
-        PositionAdvertisement, PositionMain, FilterView, TagView, TagSearch, JobAdPurchase, \
+        PositionAdvertisement, PositionMain, PositionFilter, TagView, TagSearch, JobAdPurchase, \
         JobAdPurchased, MatchUpItem, CompanyProposalsResume, CompanyInfomationModify, \
         NetworkAd, CompanyMatchupSearch, CompanyLogoModify, CompanyImages, CompanyImageModify, \
         CompanyImageDelete, ApplicantView, ApplicantDetailView, EmployeeView, WorkplaceView, \
-        CountryView, CityView
+        CountryView, CityView, JobAdState, CompanyImageModify
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -29,7 +29,7 @@ urlpatterns = [
     path('/position/main', PositionMain.as_view()),
     path('/position/advertisement', PositionAdvertisement.as_view()),
     path('/job-ad/purchase', JobAdPurchase.as_view()),
-    path('/position/main/filter', FilterView.as_view()),
+    path('/position/main/filter', PositionFilter.as_view()),
     path('/position/tag', TagView.as_view()),
     path('/position/tag/search', TagSearch.as_view()),
     path('/job-ad/purchased',JobAdPurchased.as_view()),
@@ -45,5 +45,6 @@ urlpatterns = [
     path('/employee', EmployeeView.as_view()),
     path('/country', CountryView.as_view()),
     path('/city', CityView.as_view()),
-    path('/address', WorkplaceView.as_view())
+    path('/address', WorkplaceView.as_view()),
+    path('/job-ad/home', JobAdState.as_view())
 ]

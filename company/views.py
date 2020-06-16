@@ -13,11 +13,13 @@ from django.db.models       import Q, Count, F
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
+#from iamport                import Iamport
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item , Matchup_item)
+                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration)
+
 
 def getGPS_coordinates_for_KAKAO(address):
     headers = {
@@ -454,82 +456,88 @@ def get_reward_currency(position_id):
     reward = format(position.total, ',')
 
     if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
-        total_reward = reward+currency
+        total_reward = reward + currency
         return total_reward
+        
     else:
-        total_reward = currency+reward
+        total_reward = currency + reward
         return total_reward
 
 class DetailView(View):
     @login_check
     def get(self, request, position_id):
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 8))
+        offset  = int(request.GET.get('offset', 0))
+        limit   = int(request.GET.get('limit', 8))
+        user_id = getattr(request.user, 'id', None)
         
         try:
-            user_id = request.user.id
-        except:
-            user_id = None
-        
-        position = (
-                Position.objects
+            position = (
+                Position
+                .objects
                 .select_related('company', 'role')
                 .prefetch_related('position_workplace_set')
-                .get(id=position_id)
+                .get(id = position_id)
             )
-        workplace =  position.position_workplace_set.get().workplace
-        position_list = [{
-            'id' : position_id,
-            'detail_images' : [image.image_url for image in position.company.image_set.all()],
-            'name' : position.name,
-            'company' : position.company.name,
-            'city' : position.city.name if position.city else None,
-            'country' : position.country.name,
-            'tag' : [tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
-            'bookmark' : Bookmark.objects.filter(Q(user_id=user_id) & Q(position_id=position_id)).exists(),
-            'reward' :{
-                'referrer':get_reward_currency(position.id),
-                'volunteer':get_reward_currency(position.id)
-            },
-            'body' :{
-                'description':position.description,
-                'main_task':position.responsibility,
-                'qualification':position.qualification,
-                'preffered':position.preferred,
-                'benefit':position.benefit
-            },
-            'info' :{
-                'always' :{
-                    'value':position.always,
-                    'expiry_date':position.expiry_date
-                },
-                'location' :{
-                    'full_location' : workplace.address,
-                    'lat' : workplace.lat,
-                    'lng' : workplace.lng,
-                },
-                'company' :{
-                    'image' : position.company.image_url,
-                    'name' : position.company.name,
-                    'industry_name' : position.company.industry.name
+            workplace =  position.position_workplace_set.get().workplace
+            
+            position_list = [
+                {
+                    'id' : position_id,
+                    'detail_images' : [image.image_url for image in position.company.image_set.all()],
+                    'name' : position.name,
+                    'company' : position.company.name,
+                    'city' : position.city.name if position.city else None,
+                    'country' : position.country.name,
+                    'tag' : [tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
+                    'bookmark' : Bookmark.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
+                    'applied' : Volunteers.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
+                    'reward' :{
+                        'referrer':get_reward_currency(position.id),
+                        'volunteer':get_reward_currency(position.id)
+                    },
+                    'body' :{
+                        'description' : position.description,
+                        'main_task' : position.responsibility,
+                        'qualification' : position.qualification,
+                        'preffered' : position.preferred,
+                        'benefit' : position.benefit
+                    },
+                    'info' :{
+                        'always' :{
+                            'value' : position.always,
+                            'expiry_date' : position.expiry_date
+                        },
+                        'location' :{
+                            'full_location' : workplace.address,
+                            'lat' : workplace.lat,
+                            'lng' : workplace.lng,
+                        },
+                        'company' :{
+                            'image' : position.company.image_url,
+                            'name' : position.company.name,
+                            'industry_name' : position.company.industry.name
+                        }
+                    },
+                    'recommendation' :[{
+                        'id' : item.id,
+                        'image' : item.company.image_set.first().image_url,
+                        'name' : item.name,
+                        'company' : item.company.name,
+                        'city' : item.city.name if item.city else None,
+                        'country' : item.country.name,
+                        'reward' : get_reward_currency(position.id)
+                        } for item in Position.objects.order_by('?')
+                            if item.role.job_category_id == position.role.job_category_id][offset : limit]
                 }
-            },
-            'recommendation' :[{
-                'id' : item.id,
-                'image' : item.company.image_set.first().image_url,
-                'name' : item.name,
-                'company' : item.company.name,
-                'city' : item.city.name if item.city else None,
-                'country' : item.country.name,
-                'reward' : get_reward_currency(position.id)
-                 }for item in Position.objects.order_by('?')
-                    if item.role.job_category_id == position.role.job_category_id][offset : limit]
-            }]
-        return JsonResponse({'position' : position_list}, status = 200)
+            ]
+            return JsonResponse({'position' : position_list}, status = 200)
+
+        except Position.DoesNotExist:
+            return JsonResponse({'message' : 'INVALID_POSITION'}, status = 400)
 
 class PositionBookmarkView(View):
     @login_decorator
-    def get(self, request, position_id):
+    def post(self, request, position_id):
         try:
             if Bookmark.objects.filter(Q(user_id = request.user.id) & Q(position_id = position_id)).exists():
                 Bookmark.objects.filter(Q(user_id = request.user.id) & Q(position_id = position_id)).delete()
@@ -544,14 +552,18 @@ class PositionBookmarkView(View):
 class PositionApplyView(View):
     @login_decorator
     def post(self, request, position_id):
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
 
-        Volunteers.objects.create(
-            position_id = position_id,
-            user_id = request.user.id,
-            resume_id = data['resume']
-        )
-        return HttpResponse(status = 200)
+            Volunteers.objects.create(
+                position_id = position_id,
+                user_id = request.user.id,
+                resume_id = data['resume']
+            )
+            return HttpResponse(status = 200)
+        
+        except KeyError:
+            return JsonResponse({'message' : 'INVALID_KEY'}, status = 400)
 
 class ThemeList(View):
 
@@ -583,7 +595,7 @@ class ThemeList(View):
 
 class HomeView(View):
 
-    @login_check
+    @login_decorator
     def get(self,request):
 
         user = request.user
@@ -641,8 +653,20 @@ class HomeView(View):
             "city"           : recommend.city.name if recommend.city else None,
             "country"        : recommend.city.country.name if recommend.city else None,
             "total_reward"   : get_reward_currency(recommend.id),
-        }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4]
-
+        }for recommend in positions.order_by('?')if recommend.created_at.isocalendar()[1] == datetime.date.today().isocalendar()[1]][:4] 
+        
+        if len(recommendations_of_the_week) == 0 :
+            
+            recommendations_of_the_week = [{
+                "id" :  reco.id,
+                "image" : reco.company.image_set.first().image_url,
+                "name"  : reco.name,
+                "company" : reco.company.name,
+                "city"    : reco.city.name if reco.city else None,
+                "country" : reco.city.country.name if reco.city else None,
+                "total_reward" : get_reward_currency(reco.id),
+            }for reco in positions.order_by('?')][:4]
+        
         return JsonResponse({"network_item"        : network_ad,
                              "position_recommend"  : user_recomended_position,
                              "new_employment"      : new_employment,
@@ -697,26 +721,35 @@ class CompanyRequestResume(View):
 
 class PositionAdvertisement(View):
     def get(self, request):
-        advertisement =[{
-            'id' : position.position.id,
-            'image' : position.position.company.image_set.first().image_url,
-            'company_logo' : position.position.company.image_url,
-            'name' : position.position.name,
-            'company' : position.position.company.name,
-            'location' : position.position.city.name if position.position.city else None,
-            'country' : position.position.country.name,
-            'total_reward' : get_reward_currency(position.position.id)
-        } for position in Position_item.objects.select_related('position').filter(
-                                                                            Q(start_date__lt=timezone.now()) &
-                                                                            Q(end_date__gt=timezone.now()) &
-                                                                            Q(item_id=1)
-                                                                            )]
+        advertisement_list = (
+            Position_item
+            .objects
+            .select_related('position')
+            .filter(
+                Q(start_date__lte = timezone.now()) &
+                Q(end_date__gte = timezone.now()) &
+                Q(item_id = 1)
+            )
+        )
+        position_list =[
+            {
+                'id' : position.position.id,
+                'image' : position.position.company.image_set.first().image_url,
+                'company_logo' : position.position.company.image_url,
+                'name' : position.position.name,
+                'company' : position.position.company.name,
+                'location' : position.position.city.name if position.position.city else None,
+                'country' : position.position.country.name,
+                'total_reward' : get_reward_currency(position.position.id)
+            } for position in advertisement_list
+        ]
 
-        return JsonResponse({'advertisement':advertisement}, status=200)
+        return JsonResponse({'advertisement' : position_list}, status = 200)
+
 
 class PositionMain(View):
     def sort_position(self, sort_by, year_filter):
-        sort ={
+        sort = {
             'latest' : year_filter.order_by('-created_at'),
             'popularity' : year_filter.annotate(count = Count('volunteers')).order_by('-count'),
             'compensation' : year_filter.order_by(F('total') * F('country__exchange_rate'))
@@ -725,7 +758,7 @@ class PositionMain(View):
 
     def filter_year(self, year, sort_by, city_filter):
         year_filter = city_filter.filter(Q(min_level__lte = year) & Q(max_level__gte = year))
-        year={
+        year = {
             -1 : city_filter,
              0 : city_filter.filter(Q(entry = True) | Q(min_level = 0)),
             10 : city_filter.filter(min_level__lte = year)
@@ -753,10 +786,12 @@ class PositionMain(View):
         if keyword:
             keyword_list = keyword.split(' ')
             keyword_filter = Q()
+            
             for keyword in keyword_list:
                 keyword_filter.add(Q(name__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(company__name__icontains = keyword), Q.OR)
-            position_filter=Position.objects.filter(keyword_filter).distinct()
+            
+            position_filter = Position.objects.filter(keyword_filter).distinct()
         else:
             position_filter = Position.objects.all()
         
@@ -772,15 +807,18 @@ class PositionMain(View):
         keyword = request.GET.get('keyword', None)
 
         position_filter = self.keyword_search(country, city, year, sort_by, keyword)
-        position_list =[{
-            'id' : position.id,
-            'image' : position.company.image_set.first().image_url,
-            'name' : position.name,
-            'company' : position.company.name,
-            'city' : position.city.name if position.city else None,
-            'country' : position.country.name,
-            'total_reward' : get_reward_currency(position.id),
-            } for position in position_filter[offset : offset+limit]]
+        
+        position_list =[
+            {
+                'id' : position.id,
+                'image' : position.company.image_set.first().image_url,
+                'name' : position.name,
+                'company' : position.company.name,
+                'city' : position.city.name if position.city else None,
+                'country' : position.country.name,
+                'total_reward' : get_reward_currency(position.id),
+            } for position in position_filter[offset : offset + limit]
+        ]
 
         return JsonResponse({'position' : position_list}, status = 200)
 
@@ -806,12 +844,12 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-    
+
     @login_decorator
     def get(self,request):
-        
+
         network = Network.objects.filter(item_id=1)
-        
+
         network_item = [{
             "id"               : item.id,
             "period"           : item.period,
@@ -819,7 +857,7 @@ class JobAdPurchase(View):
             "item_id"          : item.item_id,
         }for item in network]
         
-        return JsonResponse({"item" : network_item},status=200)
+        return JsonResponse({ "item" : network_item },status=200)
     
     @login_decorator
     def post(self,request):
@@ -832,7 +870,7 @@ class JobAdPurchase(View):
         #     "selected"      : item_id # 선택한 아이템 id
         # }
         # 위 정보 기반으로 이름 갯수 가격 계산
-        front = 'http://localhost:8000' # 준영님 주소
+        front = 'http://192.168.219.108:3000' # 준영님 주소
 
         request_url = "https://kapi.kakao.com/v1/payment/ready"
 
@@ -845,47 +883,70 @@ class JobAdPurchase(View):
             'cid'             : "TC0ONETIME",
             'partner_order_id': '1001',
             'partner_user_id' : 'wanted',
-            'item_name'       : data['name'], # 아이템 명 불러오기,
-            'quantity'        : data['period'], # 아이템 불러오기,
-            'total_amount'    : data['item_price'], # 아이템 불러오기,
+            'item_name'       : data['position_name'], # 아이템 명 불러오기,
+            'quantity'        : 1, # 아이템 불러오기,
+            'total_amount'    : 100, # 아이템 불러오기,
             'tax_free_amount' : 0,
-            'vat_amount'      : int(int(data['include_tax']) - int(data['item_price'])),
-            'approval_url'    : front + '/kakaopay/purchase', # 결제성공시 리다이렉트
+            'vat_amount'      : 10,
+            'approval_url'    : front + '/dashboard/ad?match=home', # 결제성공시 리다이렉트
             'fail_url'        : front, # 실패
             'cancel_url'      : front, # 취소
         }
 
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
-
+        
         res = {
             'tid'            : response['tid'],
             'redirect'       : response['next_redirect_pc_url'],
             'created_at'     : response['created_at'],
         }
 
+        Position_item.objects.create(
+            position   = Position.objects.get(id=data['position_id']),
+            item       = Item.objects.get(id=1),     # 1 직무상단 2 네트워크
+            expiration = Expiration.objects.get(id=1),  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
+            start_date = data['start_date'],  
+            end_date   = data['end_date'],
+        )
+        
         return JsonResponse({ "response" : res },status=200)
 
 class JobAdPurchased(View):
-
+    
+    @login_decorator
     def post(self,request):
-
+        
         data = json.loads(request.body)
+        
+        request_url = "https://kapi.kakao.com/v1/payment/approve"
 
-        for items in data:
+        headers1 = {
+            'Authorization'   : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
+            "Content-type"    : 'application/application/x-www-form-urlencoded;charset=utf-8',
+        }
 
-            Position_item.objects.create(
-                position   = items['postions_id'],
-                item       = items['item_id'],     # 1 직무상단 2 네트워크
-                expiration = items['expiration'],  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
-                start_date = items['start_date'],  # 날짜 받는 방식 이야기
-                end_date   = datetime.timedelta(items['end_date']),
-            )
-            
-        return HttpResponse(status=200)
+        params1 = {
+            'cid'             : "TC0ONETIME",
+            'tid'             : data['tid'], # tid 넘겨 받을 방법 찾아야 함
+            'partner_order_id': '1001',
+            'partner_user_id' : 'wanted',
+            'pg_token'        : data['pg_token'],
+            'total_amount'    : 100,
+        }
+
+        response = requests.post(request_url,params=params1,headers=headers1)
+        response = json.loads(response.text)
+        
+        Is_Paid = False
+        
+        if 'aid' in response:
+            Is_Paid = True
+        
+        return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
 class NetworkAd(View):
-
+    
     def post(self,request):
 
         data = json.loads(request.body)
@@ -896,7 +957,7 @@ class NetworkAd(View):
                                                  Q(email=data['email'])).id,
                 item       = data['item_id'],
                 expiration = data['expiration'],
-                start_date = data['start_date'], # 날짜 받는 방식 이야기
+                start_date = data['start_date'],
                 end_date   = data['end_data'],
                 image_url  = data['image_url'],
                 title      = data['title'],
@@ -922,7 +983,42 @@ class MatchUpItem(View):
         }for plan in item]
 
         return JsonResponse({"plans" : plans} , status=200)
-
+    
+class JobAdState(View):
+    
+    @login_decorator
+    def get(self,request):
+        
+        user = request.user
+        company = Company.objects.get(user_id=user.id)
+        item = Position_item.objects.filter(company_id=company.id)
+        
+        state = [{
+            "id"         : stat.id,
+            "item"       : stat.item_id, # 1 직무상단 2 네트워크 광고
+            "exp"        : stat.expiration_id, # 1 사용전 2 사용중 3 사용완료
+            "start_date" : stat.start_date,
+            "end_date"   : stat.end_date,
+            "click"      : stat.click,
+        }for stat in item]
+        
+        return JsonResponse({"response" : state},status=200)
+    
+class MatchUpItemPurchased(View):
+    
+    def post(self,request):
+        
+        data = json.loads(request.body)
+        
+        DEFAULT_TEST_IMP_KEY = 'imp_apikey'
+        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9O'
+                           'qDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
+        
+        
+    # def get(self,request):
+        
+        
+    
 class CompanyReadingResume(View):
     @login_decorator
     def post(self, request):
@@ -1007,23 +1103,27 @@ class CompanyProposalsResume(View):
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
-class FilterView(View):
-    def get(self, request):
-        city_by_country = [{
-            'country' : country.name,
-            'city' : [city.name for city in country.city_set.all()]
-            }for country in Country.objects.all()]
+class PositionFilter(View):
+    def get(self, request):   
+        city_by_country = [
+            {
+                'country' : country.name,
+                'city' : [city.name for city in country.city_set.all()]
+            } for country in Country.objects.all()]
+       
         career = [level.year for level in Matchup_career.objects.all()]
 
         return JsonResponse({'country_city' : city_by_country, 'career' : career}, status=200)
 
 class TagView(View):
-    def get(self, request):
-        tag_list = [{
-            category.name:[tag.name for tag in category.tag_set.all()]
-        }for category in Category.objects.all()]
+    def get(self, request):        
+        tag_list = [
+            {
+                category.name : [tag.name for tag in category.tag_set.all()]
+            } for category in Category.objects.all()
+        ]
 
-        return JsonResponse({'tag_list' : tag_list}, status=200)
+        return JsonResponse({'tag_list' : tag_list}, status = 200)
 
 class TagSearch(View):
     def get(self, request):
@@ -1031,22 +1131,24 @@ class TagSearch(View):
         offset = int(request.GET.get('offset', 0))
         limit  = int(request.GET.get('limit', 20))
 
-        if tag:
-            return JsonResponse({'message' : 'INVALID_TAG_NAME'})
+        if not tag:
+            return JsonResponse({'message' : 'INVALID_TAG_NAME'}, status = 400)
 
-        tag_search = Position.objects.filter(company__company_tag__tag__name=tag).order_by('-created_at')
-        search_list = [{
-            'id' : position.id,
-            'image' : position.company.image_set.first().image_url,
-            'name' : position.name,
-            'company' : position.company.name,
-            'city' : position.city.name if position.city else None,
-            'country' : position.country.name,
-            'total_reward' : get_reward_currency(position.id)
-            } for position in tag_search[offset:offset+limit]
+        tag_search = Position.objects.filter(company__company_tag__tag__name = tag).order_by('-created_at')
+        
+        search_list = [
+            {
+                'id' : position.id,
+                'image' : position.company.image_set.first().image_url,
+                'name' : position.name,
+                'company' : position.company.name,
+                'city' : position.city.name if position.city else None,
+                'country' : position.country.name,
+                'total_reward' : get_reward_currency(position.id)
+            } for position in tag_search[offset : offset + limit]
         ]
 
-        return JsonResponse({'position' : search_list}, status=200)
+        return JsonResponse({'position' : search_list}, status = 200)
 
 class CompanyMatchupSearch(View):
     def filter_year(self, year_from, year_to, country_filter):
@@ -1062,30 +1164,35 @@ class CompanyMatchupSearch(View):
             country_filter = keyword_filter
         else:
             country_filter = keyword_filter.filter(user__country__name__in=country)
+        
         return self.filter_year(year_from, year_to, country_filter)
 
     def keyword_search(self, keyword, country, year_from, year_to, resume_list):
         if keyword:
             keyword_list = keyword.split(' ')
             keyword_filter = Q()
+            
             for keyword in keyword_list:
-                keyword_filter.add(Q(career__company__icontains=keyword), Q.OR)
-                keyword_filter.add(Q(education__school__icontains=keyword), Q.OR)
-                keyword_filter.add(Q(matchup_skill__skill__icontains=keyword), Q.OR)
-                keyword_filter.add(Q(description__icontains=keyword), Q.OR)
+                keyword_filter.add(Q(career__company__icontains = keyword), Q.OR)
+                keyword_filter.add(Q(education__school__icontains = keyword), Q.OR)
+                keyword_filter.add(Q(matchup_skill__skill__icontains = keyword), Q.OR)
+                keyword_filter.add(Q(description__icontains = keyword), Q.OR)
+            
             keyword_filter = resume_list.filter(keyword_filter)
         else:
             keyword_filter = resume_list
+        
         return self.filter_country(country, year_from, year_to, keyword_filter)
 
     def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
         resume = Resume.objects.all()
+        
         resume_list = {
-                1 : resume.filter(company_matchup__company_id=company_id),
-                2 : resume.filter(like__company_id=company_id),
-                3 : resume.filter(Q(reading__company_id=company_id) & Q(reading__read=0)),
-                4 : resume.filter(Q(reading__company_id=company_id) & Q(reading__read=1)),
-                5 : resume.filter(proposal__company_id=company_id)
+                1 : resume.filter(company_matchup__company_id = company_id),
+                2 : resume.filter(like__company_id = company_id),
+                3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
+                4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
+                5 : resume.filter(proposal__company_id = company_id)
                 }.get(resume_list, resume)
         
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
@@ -1099,38 +1206,50 @@ class CompanyMatchupSearch(View):
 
     @login_decorator
     def get(self, request):
-        offset      = request.GET.get('offset', 0)
-        limit       = request.GET.get('limit', 10)
+        offset      = int(request.GET.get('offset', 0))
+        limit       = int(request.GET.get('limit', 10))
         country     = request.GET.getlist('country', ['한국'])
         year_from   = int(request.GET.get('year_from', 0))
         year_to     = int(request.GET.get('year_to', 20))
         keyword     = request.GET.get('keyword', None)
         resume_list = int(request.GET.get('list', -1))
-        company_id  = Company.objects.get(user_id = request.user.id).id
-
-        resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
-        total_amount = len(resume_search)
-        resume_list = [
-                {
-                    'id' : resume.id,
-                    'name' : resume.user.name[0],
-                    'role': [role.role.name for role in resume.resume_role_set.all()],
-                    'total_career' : resume.total_work,
-                    'career' : [{
-                            'company' : career.career_set.company,
-                            'duration' : get_duration(
-                                            career.career_set.end_year, career.career_set.end_month,
-                                            career.career_set.start_year, career.career_set.start_month
+       
+        try:
+            company_id  = Company.objects.get(user_id = request.user.id).id
+            resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
+            total_amount = len(resume_search)
+            
+            resume_list = [
+                    {
+                        'id' : resume.id,
+                        'name' : resume.user.name,
+                        'role': [role.role.name for role in resume.resume_role_set.all()],
+                        'total_career' : resume.total_work,
+                        'career' : [
+                            {
+                                'company' : career.career_set.company,
+                                'duration' : get_duration(
+                                                career.career_set.end_year, career.career_set.end_month,
+                                                career.career_set.start_year, career.career_set.start_month
                                             )
-                            } for career in resume.career_set.all()],
-                    'description' : resume.description,
-                    'skill' : [skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
-                    'school' : resume.education_set.first().school,
-                    'specialism' : resume.education_set.first().specialism,
-                    'liked' : Like.objects.filter(Q(company_id=company_id) & Q(resume_id=resume.id) & Q(status=1)).exists()
-                    } for resume in resume_search.order_by('-created_at')[offset:offset+limit]
-        ]
-        return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)
+                                } for career in resume.career_set.all()
+                        ],
+                        'description' : resume.description,
+                        'skill' : [skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
+                        'school' : resume.education_set.first().school,
+                        'specialism' : resume.education_set.first().specialism,
+                        'liked' : Like.objects.filter(
+                                                    Q(company_id = company_id) & 
+                                                    Q(resume_id = resume.id) & 
+                                                    Q(status = 1)
+                                                    ).exists()
+                        } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
+            ]
+            
+            return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)
+        
+        except Company.DoesNotExist:
+            return JsonResponse({'message' : 'INVALID_COMPANY'}, status = 401)
 
 class ApplicantView(View):
     @login_decorator
@@ -1165,8 +1284,7 @@ class ApplicantView(View):
                     user['user__name']=list(user['user__name'])[0]
                     data.append(user)
 
-        return JsonResponse(
-            {'volunteer':data[offset:offset+limit],'max_length':len(data)}, status=200)
+        return JsonResponse({'volunteer':data[offset:offset+limit],'max_length':len(data)}, status=200)
 
 class ApplicantDetailView(View):
 
