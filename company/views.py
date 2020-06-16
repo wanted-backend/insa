@@ -285,7 +285,14 @@ class CompanyImageDelete(View):
                 if images == 2:
                     return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
                 Image.objects.get(id=image_id).delete()
-                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+                data = [
+                    {
+                        'id':image.id,
+                        'company_id':image.company.id,
+                        'image':image.image_url
+                    } for image in images
+                ]
+                return JsonResponse({'image':data}, status=200)
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
