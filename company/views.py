@@ -476,7 +476,10 @@ class DetailView(View):
     def get(self, request, position_id):
         offset  = int(request.GET.get('offset', 0))
         limit   = int(request.GET.get('limit', 8))
-        user_id = getattr(request.user, 'id', None)
+        try:
+            user_id = request.user.id
+        except:
+            user_id = None
 
         try:
             position = (
