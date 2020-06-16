@@ -326,11 +326,11 @@ class CompanyPosition(View):
             
             position = Position.objects.create(
                 company = company,
-                min_level = is_entry_min,
+                min_level = int(is_entry_min),
                 max_level = is_entry_max,
                 entry = data['entry'],
-                mim_wage = data['mim_wage'],
-                max_wage = data['mim_wage'],
+                mim_wage = int(data['mim_wage']),
+                max_wage = int(data['mim_wage']),
                 expiry_date = is_always,
                 always = data['always'],
                 name = data['name'],
