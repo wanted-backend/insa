@@ -13,6 +13,7 @@ urlpatterns = [
     path('/register', CompanyRegister.as_view()),
     path('/modify', CompanyInfomationModify.as_view()),
     path('/positions/create', CompanyPosition.as_view()),
+    path('/positions/<int:position_id>', CompanyPosition.as_view()),
     path('/positions', PositionList.as_view()),
     path('/position/<int:position_id>', DetailView.as_view()),
     path('/like/resume', CompanyLikedResume.as_view()),

@@ -230,7 +230,15 @@ class CompanyImages(View):
                 company_id=company.id,
                 image_url='/static/'+data['image_url']
             )
-            return JsonResponse({'image':'SUCCESS'}, status=200)
+            images = company.image_set.filter(company_id=company.id)
+            data = [
+                {
+                    'id':image.id,
+                    'company_id':image.company.id,
+                    'image':image.image_url
+                } for image in images
+            ]
+            return JsonResponse({'image':data}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
@@ -282,10 +290,10 @@ class CompanyImageDelete(View):
 
 class CompanyPosition(View):
     @login_decorator
-    def get(self, request):
+    def get(self, request, position_id):
         company = Company.objects.get(user_id=request.user.id)
-        position = Position.objects.get(company_id=company.id)
-        address = Workplace.objects.get(company_id=company.id)
+        position = Position.objects.get(id=position_id)
+        address = Workplace.objects.get(company_id=company.id, represent=True)
         is_always = '상시' if position.always==True else position.expiry_date
         is_entry_min = 0 if position.entry==True else position.min_level
         is_entry_max = 1 if position.entry==True else position.max_level
@@ -297,7 +305,7 @@ class CompanyPosition(View):
                     'company_id':company.id,
                     'company':company.name,
                     'name':position.name,
-                    'role':position.role.name,
+                    'role':{position.role.id:position.role.name},
                     'description':position.description,
                     'responsibility':position.responsibility,
                     'preferred':is_preferred,
@@ -345,7 +353,7 @@ class CompanyPosition(View):
             )
             for role in data['role']:
                 positions = Position.objects.get(id=position.id)
-                positions.role = Role.objects.get(name=role)
+                positions.role = Role.objects.get(id=int(role))
                 positions.save()
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
