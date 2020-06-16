@@ -802,22 +802,6 @@ def get_reward_currency(position_id):
         total_reward=currency+reward
         return total_reward
 
-class UserBookmark(View):
-    @login_decorator
-    def get(self, request):
-        position_list=Position.objects.filter(bookmark__user_id=request.user.id)
-        is_bookmarked=[{
-            'id':position.id,
-            'image':position.company.image_set.first().image_url,
-            'name':position.name,
-            'company':position.company.name,
-            'country':position.country.name,
-            'city':position.city.name if position.city else None,
-            'reward':get_reward_currency(position.id)
-        }for position in position_list]
-
-        return JsonResponse({'bookmark':is_bookmarked}, status=200)
-
 class UserImageUploadView(View):
     @login_decorator
     def post(self, request):
@@ -829,7 +813,6 @@ class UserImageUploadView(View):
 
         return JsonResponse({'data':user.image_url}, status = 200)
 
-    @login_decorator
     def get(self, request):
 
         user = request.user
@@ -877,3 +860,31 @@ class ApplicantResumeView(View):
 
         return JsonResponse({'data':data}, status = 200)
 
+class UserBookmark(View):
+    @login_decorator
+    def get(self, request):
+        position_list = Position.objects.filter(bookmark__user_id=request.user.id)
+        is_bookmarked =[{
+            'id' : position.id,
+            'image' : position.company.image_set.first().image_url,
+            'name' : position.name,
+            'company' : position.company.name,
+            'country' : position.country.name,
+            'city' : position.city.name if position.city else None,
+            'reward' : get_reward_currency(position.id)
+        } for position in position_list]
+
+        return JsonResponse({'bookmark' : is_bookmarked}, status = 200)
+
+class UserApplyView(View):
+    @login_decorator
+    def get(self, request):
+        user_id = request.user.id
+        applied_position = Volunteers.objects.filter(user_id = user_id)
+        applied_list =[{
+            'company' : position.position.company.name,
+            'position' : position.position.name,
+            'applied_at' : position.created_at
+        } for position in applied_position]
+
+        return JsonResponse({'applied_position' : applied_list}, status = 200)
