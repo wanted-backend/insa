@@ -29,7 +29,8 @@ def getGPS_coordinates_for_KAKAO(address):
     api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
     lat = api.json()['documents'][0]['x']
     lng = api.json()['documents'][0]['y']
-    result = [lat, lng]
+    city = api.json()['documents'][0]['address']['region_1depth_name']
+    result = [lat, lng, city]
     return result
 
 class EmployeeView(View):
@@ -41,7 +42,29 @@ class EmployeeView(View):
                 'employee':employee.number
             } for employee in employees
         ]
-        return JsonResponse({'employees':data}, status=401)
+        return JsonResponse({'employees':data}, status=200)
+
+class CountryView(View):
+    def get(self, request):
+        countries = Country.objects.all()
+        data = [
+            {
+                'id':country.id,
+                'country':country.name
+            } for country in countries
+        ]
+        return JsonResponse({'countries':data}, status=200)
+
+class CityView(View):
+    def get(self, request):
+        cities = City.objects.all()
+        data = [
+            {
+                'id':city.id,
+                'city':city.name
+            } for city in cities
+        ]
+        return JsonResponse({'cities':data}, status=200)
 
 class CompanyRegister(View):
     @login_decorator
@@ -140,12 +163,13 @@ class WorkplaceView(View):
         data = json.loads(request.body)
         try:
             address = data['address']
-            company = Company.objects.get(user_id=request.user.id)
             coordinates = getGPS_coordinates_for_KAKAO(address)
+            city = City.objects.get(name=coordinates[2])
+            company = Company.objects.get(user_id=request.user.id)
             Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
-                city = City.objects.get(name=data['city']),
-                country = Country.objects.get(name=data['country']),
+                city_id = city.id,
+                country_id = city.country.id,
                 address = address,
                 lat = coordinates[0],
                 lng = coordinates[1]
@@ -300,7 +324,7 @@ class CompanyPosition(View):
             is_always = None if data['always']==True else data['expiry_date']
             is_preferred = None if data['preferred']==True else data['preferred']
             
-            Position.objects.create(
+            position = Position.objects.create(
                 company = company,
                 min_level = is_entry_min,
                 max_level = is_entry_max,
@@ -309,7 +333,6 @@ class CompanyPosition(View):
                 max_wage = data['mim_wage'],
                 expiry_date = is_always,
                 always = data['always'],
-                workplace = Workplace.objects.get(company_id=company.id),
                 name = data['name'],
                 description = data['description'],
                 responsibility = data['responsibility'],
@@ -321,9 +344,9 @@ class CompanyPosition(View):
                 total = data['total']
             )
             for role in data['role']:
-                position = Position.objects.get(company_id=company.id)
-                position.role = Role.objects.get(name=role)
-                position.save()
+                positions = Position.objects.get(id=position.id)
+                positions.role = Role.objects.get(name=role)
+                positions.save()
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
