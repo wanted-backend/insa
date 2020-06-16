@@ -190,7 +190,7 @@ class UserResumeWriteView(View):
         resume = Resume.objects.get(id=main_resume_id)
 
         def judgment(element, affiliation):
-            if element == None:
+            if element == None or element == "":
                 outcome=affiliation
             else:
                 outcome=element
@@ -770,14 +770,15 @@ class MatchUpRegistrationView(View):
     @login_decorator
     def post(self, request):
 
+        user = request.user
         data = json.loads(request.body)
-        if Resume.objects.filter(is_matchup=True).exists():
-            non_matchup_resume              = Resume.objects.get(is_matchup=True)
-            non_matchup_resume.is_matchup   = False
 
-        matchupResume               = Resume.objects.get(id=data['resume_id'])
-        matchupResume.is_matchup    = True
-        matchupResume.save()
+        user_resume = Resume.objects.filter(user_id=user.id)
+        user_resume.update(is_matchup=False)
+
+        matchup_resume  = Resume.objects.get(id= data['resume_id'])
+        matchup_resume.is_matchup   = True
+        matchup_resume.save()
 
         return HttpResponse(status = 200)
 
