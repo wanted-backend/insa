@@ -12,7 +12,8 @@ from django.db.models   import Q
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country, Volunteers
+
+from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country, Volunteers, Bookmark
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
 
 class UserEmailExists(View):
@@ -782,17 +783,6 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-def get_reward_currency(position_id):
-    position=Position.objects.get(id=position_id)
-    currency=position.country.english_currency
-    reward=format(position.total, ',')
-
-    if position.country.id==3 or position.country.id==4 or position.country.id==6:
-        total_reward=reward+currency
-        return total_reward
-    else:
-        total_reward=currency+reward
-        return total_reward
 
 class UserImageUploadView(View):
     @login_decorator
@@ -853,6 +843,19 @@ class ApplicantResumeView(View):
 
         return JsonResponse({'data':data}, status = 200)
 
+def get_reward_currency(position_id):
+    position = Position.objects.get(id = position_id)
+    currency = position.country.english_currency
+    reward   = format(position.total, ',')
+
+    if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
+        total_reward = reward + currency
+        return total_reward
+
+    else:
+        total_reward = currency + reward
+        return total_reward
+
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
@@ -872,12 +875,17 @@ class UserBookmark(View):
 class UserApplyView(View):
     @login_decorator
     def get(self, request):
-        user_id = request.user.id
-        applied_position = Volunteers.objects.filter(user_id = user_id)
+        applied_position = (
+            Position
+            .objects
+            .select_related('company').
+            prefetch_related('volunteers_set')
+            .filter(volunteers__user_id = request.user.id)
+        )
         applied_list =[{
-            'company' : position.position.company.name,
-            'position' : position.position.name,
-            'applied_at' : position.created_at
+            'company' : position.company.name,
+            'position' : position.name,
+            'applied_at' : position.volunteers_set.get().created_at
         } for position in applied_position]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)

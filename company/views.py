@@ -15,6 +15,7 @@ from django.utils           import timezone
 
 from datetime               import date
 # from iamport                import Iamport
+
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
@@ -469,7 +470,7 @@ class MatchupList(View):
 def get_reward_currency(position_id):
     position = Position.objects.get(id=position_id)
     currency = position.country.english_currency
-    reward = format(position.total, ',')
+    reward   = format(position.total, ',')
 
     if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
         total_reward = reward + currency
@@ -484,6 +485,7 @@ class DetailView(View):
     def get(self, request, position_id):
         offset  = int(request.GET.get('offset', 0))
         limit   = int(request.GET.get('limit', 8))
+        
         try:
             user_id = request.user.id
         except:
@@ -537,16 +539,18 @@ class DetailView(View):
                             'industry_name' : position.company.industry.name
                         }
                     },
-                    'recommendation' :[{
-                        'id' : item.id,
-                        'image' : item.company.image_set.first().image_url,
-                        'name' : item.name,
-                        'company' : item.company.name,
-                        'city' : item.city.name if item.city else None,
-                        'country' : item.country.name,
-                        'reward' : get_reward_currency(position.id)
+                    'recommendation' :[
+                        {
+                            'id' : item.id,
+                            'image' : item.company.image_set.first().image_url,
+                            'name' : item.name,
+                            'company' : item.company.name,
+                            'city' : item.city.name if item.city else None,
+                            'country' : item.country.name,
+                            'reward' : get_reward_currency(position.id)
                         } for item in Position.objects.order_by('?')
-                            if item.role.job_category_id == position.role.job_category_id][offset : limit]
+                            if item.role.job_category_id == position.role.job_category_id
+                    ] [offset : limit]
                 }
             ]
             return JsonResponse({'position' : position_list}, status = 200)
@@ -1220,6 +1224,7 @@ class CompanyMatchupSearch(View):
         resume = Resume.objects.all()
 
         resume_list = {
+<<<<<<< HEAD
                 1 : resume.filter(company_matchup__company_id = company_id),
                 2 : resume.filter(like__company_id = company_id),
                 3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
@@ -1227,6 +1232,15 @@ class CompanyMatchupSearch(View):
                 5 : resume.filter(proposal__company_id = company_id)
                 }.get(resume_list, resume)
 
+=======
+            1 : resume.filter(company_matchup__company_id = company_id),
+            2 : resume.filter(like__company_id = company_id),
+            3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
+            4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
+            5 : resume.filter(proposal__company_id = company_id)
+            }.get(resume_list, resume)
+    
+>>>>>>> 8607ee6... added requested in Companymatchupsearch view
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
@@ -1247,8 +1261,9 @@ class CompanyMatchupSearch(View):
         resume_list = int(request.GET.get('list', -1))
 
         try:
-            company_id  = Company.objects.get(user_id = request.user.id).id
+            company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
+<<<<<<< HEAD
             total_amount = len(resume_search)
 
             resume_list = [
@@ -1276,6 +1291,39 @@ class CompanyMatchupSearch(View):
                                                     Q(status = 1)
                                                     ).exists()
                         } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
+=======
+            total_amount  = len(resume_search)
+
+            resume_list = [
+                {
+                    'id' : resume.id,
+                    'name' : resume.user.name,
+                    'role': [role.role.name for role in resume.resume_role_set.all()],
+                    'total_career' : resume.total_work,
+                    'career' : [
+                        {
+                            'company' : career.career_set.company,
+                            'duration' : self.get_duration(
+                                            career.career_set.end_year, career.career_set.end_month,
+                                            career.career_set.start_year, career.career_set.start_month
+                                        )
+                        } for career in resume.career_set.all()
+                    ],
+                    'description' : resume.description,
+                    'skill' : [skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
+                    'school' : resume.education_set.first().school,
+                    'specialism' : resume.education_set.first().specialism,
+                    'liked' : Like.objects.filter(
+                                                Q(company_id = company_id) & 
+                                                Q(resume_id = resume.id) & 
+                                                Q(status = 1)
+                                                ).exists(),
+                    'requested' : Company_matchup.objects.filter(
+                                                            Q(company_id = company_id) 
+                                                            & Q(resume_id = resume.id)
+                                                            )
+                } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
+>>>>>>> 8607ee6... added requested in Companymatchupsearch view
             ]
 
             return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)
