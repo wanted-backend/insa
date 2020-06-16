@@ -12,7 +12,7 @@ from django.db.models   import Q
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country
+from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country, Volunteers
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
 
 class UserEmailExists(View):
