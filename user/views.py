@@ -813,11 +813,12 @@ class UserImageUploadView(View):
 
         return JsonResponse({'data':user.image_url}, status = 200)
 
+    @login_decorator
     def get(self, request):
 
         user = request.user
 
-        return JsonResponse({'data':user.image_url}, status = 200)
+        return JsonResponse({'data':user.image_url,'name':user.name}, status = 200)
 
 class ApplicantResumeView(View):
     def get(self, request, main_resume_id):
