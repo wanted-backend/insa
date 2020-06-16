@@ -36,6 +36,7 @@ class CompanyRegister(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
+
         try:
             if Company.objects.filter(user_id=request.user.id).exists():
                 return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
@@ -43,8 +44,8 @@ class CompanyRegister(View):
             Company(
                 user_id = request.user.id,
                 name = data['name'],
-                registration_number = data['registration_number'],
-                revenue = data['revenue'],
+                registration_number = int(data['registration_number']),
+                revenue = int(data['revenue']),
                 industry = Industry.objects.get(name=data['industry']),
                 employee = Employee.objects.get(number=data['employee']),
                 description = data['description'],
@@ -334,12 +335,12 @@ class DetailView(View):
     def get(self, request, position_id):
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 8))
-        
+
         try:
             user_id = request.user.id
         except:
             user_id = None
-        
+
         position = (
                 Position.objects
                 .select_related('company', 'role')
@@ -607,7 +608,7 @@ class PositionMain(View):
             city_filter = country_filter
         else:
             city_filter = country_filter.filter(city__name__in = city)
-        
+
         return self.filter_year(year, sort_by, city_filter)
 
     def filter_country(self, country, city, year, sort_by, position_filter):
@@ -615,7 +616,7 @@ class PositionMain(View):
             country_filter = position_filter
         else:
             country_filter = position_filter.filter(country__name = country)
-        
+
         return self.filter_city(city, year, sort_by, country_filter)
 
     def keyword_search(self, country, city, year, sort_by, keyword):
@@ -628,7 +629,7 @@ class PositionMain(View):
             position_filter=Position.objects.filter(keyword_filter).distinct()
         else:
             position_filter = Position.objects.all()
-        
+
         return self.filter_country(country, city, year, sort_by, position_filter)
 
     def get(self, request):
@@ -956,7 +957,7 @@ class CompanyMatchupSearch(View):
                 4 : resume.filter(Q(reading__company_id=company_id) & Q(reading__read=1)),
                 5 : resume.filter(proposal__company_id=company_id)
                 }.get(resume_list, resume)
-        
+
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
@@ -1063,3 +1064,4 @@ class ApplicantDetailView(View):
         volunteers.delete()
 
         return HttpResponse(status = 200)
+

@@ -1,11 +1,10 @@
 from django.urls import path
 
-from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, AdminExists, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, IsAdminToken, MatchUpRegistrationView, UserImageUploadView
+from .views import UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView, UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView, ResumeMainView, LikedCompanies, UserMatchUpView, UserMatchUpResumeView, MatchupJobTextView, UserUpdateView, UserGlobalView, UserBookmark, UserMatchUpDetailView, CompanyInterviewResume, CompanyRequestsResume, MatchUpDetailGetView, IsAdminToken, MatchUpRegistrationView, UserImageUploadView, ApplicantResumeView
 
 urlpatterns = [
     path('/is/admin', IsAdminToken.as_view()),
     path('/exists', UserEmailExists.as_view()),
-    path('/admin/exists', AdminExists.as_view()),
     path('/register', UserRegisterView.as_view()),
     path('/adminregister', AdminRegisterView.as_view()),
     path('/login', LogInView.as_view()),
@@ -28,4 +27,5 @@ urlpatterns = [
     path('/resumeRole/<str:main_resume_id>', MatchUpDetailGetView.as_view()),
     path('/matchupRegistration', MatchUpRegistrationView.as_view()),
     path('/userImage', UserImageUploadView.as_view()),
+    path('/applicantResume/<str:main_resume_id>', ApplicantResumeView.as_view())
 ]
