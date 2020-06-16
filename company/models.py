@@ -308,3 +308,10 @@ class Proposal(models.Model):
 
     class Meta:
         db_table = 'proposals'
+
+class Temp(models.Model):
+    item = models.ForeignKey('Position_item',on_delete=models.SET_NULL, null=True)
+    tid  = models.CharField(max_length=100 , null=True)
+    
+    class Meta:
+        db_table = 'temps'

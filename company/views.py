@@ -13,12 +13,13 @@ from django.db.models       import Q, Count, F
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
+from datetime               import date
 from iamport                import Iamport
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration)
+                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration , Temp)
 
 
 def getGPS_coordinates_for_KAKAO(address):
@@ -219,7 +220,7 @@ class CompanyPosition(View):
 				entry = data['entry'],
 				mim_wage = data['mim_wage'],
 				max_wage = data['mim_wage'],
-                                expiry_date = is_always,
+                expiry_date = is_always,
 				always = data['always'],
 				workplace = Workplace.objects.get(company_id=company.id),
 				name = data['name'],
@@ -458,16 +459,16 @@ class HomeView(View):
     def get(self,request):
 
         user = request.user
-        roles = Resume.objects.get(user_id=user.id).job_category_id if Resume.objects.filter(user_id=user.id) else None# 목데이터 실제 테스트시 1이 아닌 user.id
+        roles = Resume.objects.filter(user_id=user.id).first().job_category_id if Resume.objects.filter(user_id=user.id) else None # 목데이터 실제 테스트시 1이 아닌 user.id
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set','role').all()
         network_item = Position_item.objects.filter(
-            Q(start_date__lt=timezone.now()) &
-            Q(end_date__gt=timezone.now()) &
-            Q(item_id=2)) if Position_item.objects.filter(
-                Q(start_date__lt=timezone.now()) &
-                Q(end_date__gt=timezone.now()) &
-                Q(item_id=2)) else None
+            Q(start_date__lte =date.today()) &
+            Q(end_date__gte   =date.today()) &
+            Q(item_id=2))     if Position_item.objects.filter(
+                Q(start_date__lte =date.today()) &
+                Q(end_date__gte   =date.today()) &
+                Q(item_id=2))     else None
 
         network_ad = [{
             "id"             : item.id,
@@ -517,12 +518,12 @@ class HomeView(View):
         if len(recommendations_of_the_week) == 0 :
             
             recommendations_of_the_week = [{
-                "id" :  reco.id,
-                "image" : reco.company.image_set.first().image_url,
-                "name"  : reco.name,
-                "company" : reco.company.name,
-                "city"    : reco.city.name if reco.city else None,
-                "country" : reco.city.country.name if reco.city else None,
+                "id"           : reco.id,
+                "image"        : reco.company.image_set.first().image_url,
+                "name"         : reco.name,
+                "company"      : reco.company.name,
+                "city"         : reco.city.name if reco.city else None,
+                "country"      : reco.city.country.name if reco.city else None,
                 "total_reward" : get_reward_currency(reco.id),
             }for reco in positions.order_by('?')][:4]
         
@@ -580,6 +581,7 @@ class CompanyRequestResume(View):
 
 class PositionAdvertisement(View):
     def get(self, request):
+        
         advertisement =[{
             'id' : position.position.id,
             'image' : position.position.company.image_set.first().image_url,
@@ -589,13 +591,17 @@ class PositionAdvertisement(View):
             'location' : position.position.city.name if position.position.city else None,
             'country' : position.position.country.name,
             'total_reward' : get_reward_currency(position.position.id)
-        } for position in Position_item.objects.select_related('position').filter(
-                                                                            Q(start_date__lt=timezone.now()) &
-                                                                            Q(end_date__gt=timezone.now()) &
-                                                                            Q(item_id=1)
-                                                                            )]
+        } for position in Position_item.objects.select_related('position').filter(Q(start_date__lte=date.today()) & 
+                                                                                  Q(end_date__gte=date.today()) & 
+                                                                                  Q(item_id=1) &
+                                                                                  Q(is_valid=True))]
 
         return JsonResponse({'advertisement':advertisement}, status=200)
+    
+    def post(self, request):
+        
+        data = json.loads(request.body)
+        
 
 class PositionMain(View):
     def sort_position(self, sort_by, year_filter):
@@ -689,7 +695,7 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-
+    
     @login_decorator
     def get(self,request):
 
@@ -708,13 +714,12 @@ class JobAdPurchase(View):
     def post(self,request):
 
         data = json.loads(request.body)
-        # 들어오는 정보
-        # {
-        #     "position_id"   : id, # 선택된 포지션 id
-        #     "position_name" : name, # 포지션 이름
-        #     "selected"      : item_id # 선택한 아이템 id
-        # }
-        # 위 정보 기반으로 이름 갯수 가격 계산
+        
+        if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) & 
+                                        Q(end_date=data['end_date'])).exists():
+            
+            return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
+
         front = 'http://192.168.219.108:3000' # 준영님 주소
 
         request_url = "https://kapi.kakao.com/v1/payment/ready"
@@ -746,15 +751,20 @@ class JobAdPurchase(View):
             'redirect'       : response['next_redirect_pc_url'],
             'created_at'     : response['created_at'],
         }
-
-        Position_item.objects.create(
+        
+        item = Position_item.objects.create(
             position   = Position.objects.get(id=data['position_id']),
             item       = Item.objects.get(id=1),     # 1 직무상단 2 네트워크
             expiration = Expiration.objects.get(id=1),  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
             start_date = data['start_date'],  
             end_date   = data['end_date'],
         )
-        
+
+        Temp.objects.create(
+            item = Position_item.objects.get(id=item.id),
+            tid  = response['tid']
+        )
+
         return JsonResponse({ "response" : res },status=200)
 
 class JobAdPurchased(View):
@@ -763,6 +773,8 @@ class JobAdPurchased(View):
     def post(self,request):
         
         data = json.loads(request.body)
+        
+        tid = Temp.objects.get()
         
         request_url = "https://kapi.kakao.com/v1/payment/approve"
 
@@ -773,20 +785,27 @@ class JobAdPurchased(View):
 
         params1 = {
             'cid'             : "TC0ONETIME",
-            'tid'             : data['tid'], # tid 넘겨 받을 방법 찾아야 함
+            'tid'             : tid.tid, # tid 넘겨 받을 방법 찾아야 함
             'partner_order_id': '1001',
             'partner_user_id' : 'wanted',
             'pg_token'        : data['pg_token'],
             'total_amount'    : 100,
         }
-
+        
+        
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
+        
         
         Is_Paid = False
         
         if 'aid' in response:
-            Is_Paid = True
+            Is_Paid       = True
+            Paid          = Position_item.objects.get(id=tid.item.id)
+            Paid.is_valid = True
+            Paid.save()
+            
+        Temp.objects.all().delete()
         
         return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
@@ -829,6 +848,42 @@ class MatchUpItem(View):
 
         return JsonResponse({"plans" : plans} , status=200)
     
+    # @login_decorator
+    # def post(self,reqeust):
+    #     front = 'http://192.168.219.108:3000' # 준영님 주소
+
+    #     request_url = "https://kapi.kakao.com/v1/payment/ready"
+
+    #     headers1 = {
+    #         'Authorization'   : "KakaoAK " + "adb7eb79eb94d1702a3c84bff005e31c",
+    #         "Content-type"    : 'application/application/x-www-form-urlencoded;charset=utf-8',
+    #     }
+
+    #     params1 = {
+    #         'cid'             : "TC0ONETIME",
+    #         'partner_order_id': '1001',
+    #         'partner_user_id' : 'wanted',
+    #         'item_name'       : data['position_name'], # 아이템 명 불러오기,
+    #         'quantity'        : 1, # 아이템 불러오기,
+    #         'total_amount'    : 100, # 아이템 불러오기,
+    #         'tax_free_amount' : 0,
+    #         'vat_amount'      : 10,
+    #         'approval_url'    : front + '/dashboard/ad?match=home', # 결제성공시 리다이렉트
+    #         'fail_url'        : front, # 실패
+    #         'cancel_url'      : front, # 취소
+    #     }
+
+    #     response = requests.post(request_url,params=params1,headers=headers1)
+    #     response = json.loads(response.text)
+        
+    #     res = {
+    #         'tid'            : response['tid'],
+    #         'redirect'       : response['next_redirect_pc_url'],
+    #         'created_at'     : response['created_at'],
+    #     }
+        
+    #     return JsonResponse({ "response" : res },status=200)
+    
 class JobAdState(View):
     
     @login_decorator
@@ -839,31 +894,24 @@ class JobAdState(View):
         item = Position_item.objects.filter(company_id=company.id)
         
         state = [{
-            "id"         : stat.id,
-            "item"       : stat.item_id, # 1 직무상단 2 네트워크 광고
-            "exp"        : stat.expiration_id, # 1 사용전 2 사용중 3 사용완료
-            "start_date" : stat.start_date,
-            "end_date"   : stat.end_date,
-            "click"      : stat.click,
+            "item"          : stat.item.name, # 1 직무상단 2 네트워크 광고
+            "position_name" : stat.position.name,
+            "exp"           : stat.expiration.name, # 1 사용전 2 사용중 3 사용완료
+            "start_date"    : stat.start_date,
+            "end_date"      : stat.end_date,
+            "click"         : stat.click,
         }for stat in item]
         
         return JsonResponse({"response" : state},status=200)
     
 class MatchUpItemPurchased(View):
     
+    @login_decorator
     def post(self,request):
         
         data = json.loads(request.body)
         
-        DEFAULT_TEST_IMP_KEY = 'imp_apikey'
-        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9O'
-                           'qDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
         
-        
-    # def get(self,request):
-        
-        
-    
 class CompanyReadingResume(View):
     @login_decorator
     def post(self, request):
