@@ -1224,15 +1224,6 @@ class CompanyMatchupSearch(View):
         resume = Resume.objects.all()
 
         resume_list = {
-<<<<<<< HEAD
-                1 : resume.filter(company_matchup__company_id = company_id),
-                2 : resume.filter(like__company_id = company_id),
-                3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
-                4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
-                5 : resume.filter(proposal__company_id = company_id)
-                }.get(resume_list, resume)
-
-=======
             1 : resume.filter(company_matchup__company_id = company_id),
             2 : resume.filter(like__company_id = company_id),
             3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
@@ -1240,7 +1231,6 @@ class CompanyMatchupSearch(View):
             5 : resume.filter(proposal__company_id = company_id)
             }.get(resume_list, resume)
     
->>>>>>> 8607ee6... added requested in Companymatchupsearch view
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
@@ -1263,35 +1253,6 @@ class CompanyMatchupSearch(View):
         try:
             company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
-<<<<<<< HEAD
-            total_amount = len(resume_search)
-
-            resume_list = [
-                    {
-                        'id' : resume.id,
-                        'name' : resume.user.name,
-                        'role': [role.role.name for role in resume.resume_role_set.all()],
-                        'total_career' : resume.total_work,
-                        'career' : [
-                            {
-                                'company' : career.career_set.company,
-                                'duration' : get_duration(
-                                                career.career_set.end_year, career.career_set.end_month,
-                                                career.career_set.start_year, career.career_set.start_month
-                                            )
-                                } for career in resume.career_set.all()
-                        ],
-                        'description' : resume.description,
-                        'skill' : [skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
-                        'school' : resume.education_set.first().school,
-                        'specialism' : resume.education_set.first().specialism,
-                        'liked' : Like.objects.filter(
-                                                    Q(company_id = company_id) &
-                                                    Q(resume_id = resume.id) &
-                                                    Q(status = 1)
-                                                    ).exists()
-                        } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
-=======
             total_amount  = len(resume_search)
 
             resume_list = [
@@ -1323,7 +1284,6 @@ class CompanyMatchupSearch(View):
                                                             & Q(resume_id = resume.id)
                                                             )
                 } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
->>>>>>> 8607ee6... added requested in Companymatchupsearch view
             ]
 
             return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)
