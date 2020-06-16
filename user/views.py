@@ -864,7 +864,7 @@ class UserBookmark(View):
             'company' : position.company.name,
             'country' : position.country.name,
             'city' : position.city.name if position.city else None,
-            'reward' : get_reward_currency(position.id)
+            'total_reward' : get_reward_currency(position.id)
         } for position in position_list]
 
         return JsonResponse({'bookmark' : is_bookmarked}, status = 200)

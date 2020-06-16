@@ -556,6 +556,7 @@ class DetailView(View):
 class PositionBookmarkView(View):
     @login_decorator
     def post(self, request, position_id):
+
         try:
             if Bookmark.objects.filter(Q(user_id = request.user.id) & Q(position_id = position_id)).exists():
                 Bookmark.objects.filter(Q(user_id = request.user.id) & Q(position_id = position_id)).delete()
@@ -617,7 +618,7 @@ class HomeView(View):
     def get(self,request):
 
         user = request.user
-        roles = Resume.objects.get(user_id=user.id).job_category_id if Resume.objects.filter(user_id=user.id) else None# 목데이터 실제 테스트시 1이 아닌 user.id
+        roles = Resume.objects.filter(user_id=user.id).first().job_category_id if Resume.objects.filter(user_id=user.id) else None# 목데이터 실제 테스트시 1이 아닌 user.id
         themes = Theme.objects.prefetch_related('position_set').all()
         positions = Position.objects.select_related('company').prefetch_related('position_workplace_set','role').all()
         network_item = Position_item.objects.filter(
