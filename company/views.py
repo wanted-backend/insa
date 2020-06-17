@@ -32,8 +32,8 @@ def getGPS_coordinates_for_KAKAO(address):
         address = address.encode("utf-8")
         p = urllib.parse.urlencode({'query': address})
         api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
-        lat = api.json()['documents'][0]['x']
-        lng = api.json()['documents'][0]['y']
+        lat = api.json()['documents'][0]['y']
+        lng = api.json()['documents'][0]['x']
         city = api.json()['documents'][0]['address']['region_1depth_name']
         result = [lat, lng, city]
         return result
@@ -127,7 +127,7 @@ class CompanyRegister(View):
                 {
                     'id':company.id,
                     'name':company.name,
-                    'logo':company.image_set.first().image_url if company.image_set.first() else '',
+                    'logo':company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)[1] else '',
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
@@ -443,7 +443,7 @@ class PositionList(View):
         data = [
             {
                 'id' : position.id,
-                'image' : position.company.image_set.first().image_url if position.company.image_set.first() else '',
+                'image' : company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)[1] else '',
                 'name' : position.name,
                 'company' : position.company.name,
                 'city' : workplace.first().city.name,
