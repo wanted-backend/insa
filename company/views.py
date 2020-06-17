@@ -364,7 +364,7 @@ class CompanyPosition(View):
             coordinates = getGPS_coordinates_for_KAKAO(address)
             city = City.objects.get(name=coordinates[2])
             company = Company.objects.get(user_id=request.user.id)
-        
+
             place = Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city_id = city.id,
