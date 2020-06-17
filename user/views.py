@@ -8,7 +8,7 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
 from datetime           import datetime
-from django.db.models   import Q
+from django.db.models   import Q, F
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
@@ -153,7 +153,6 @@ class ResumeMainView(View):
         )
 
         for resume in resumeMain:
-            print(resume['title'])
             if resume['title']== None:
                 resume['title']=""
             if resume['status'] == False:
@@ -171,6 +170,7 @@ class ResumeView(View):
         resume          = Resume.objects.create()
         resume.user_id  = user.id
         resume.status   = True
+        resume.title    = "새로운 문서"
         resume.save()
 
         print(resume.id)
@@ -228,9 +228,10 @@ class UserResumeWriteView(View):
             data = json.loads(request.body)
             user = request.user
 
-            resume = Resume.objects.get(id=main_resume_id)
+            print(data)
 
-            resume.id           = main_resume_id
+            Resume.objects.filter(id=main_resume_id)
+
             resume.title        = data['title']
             resume.name         = data['name']
             resume.email        = data['email']
