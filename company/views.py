@@ -211,7 +211,7 @@ class CompanyInfomationModify(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class CompanyLogoModify(View):
+class CompanyLogo(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)

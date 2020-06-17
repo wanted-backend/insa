@@ -5,7 +5,7 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         JobAdPosition, ThemeList, HomeView, CompanyLikedResume, \
         PositionAdvertisement, PositionMain, PositionFilter, TagView, TagSearch, JobAdPurchase, \
         JobAdPurchased, MatchUpItem, CompanyProposalsResume, CompanyInfomationModify, \
-        NetworkAd, CompanyMatchupSearch, CompanyLogoModify, CompanyImages, CompanyImageModify, \
+        NetworkAd, CompanyMatchupSearch, CompanyLogo, CompanyImages, CompanyImageModify, \
         CompanyImageDelete, ApplicantView, ApplicantDetailView, EmployeeView, WorkplaceView, \
         CountryView, CityView, JobAdState
 
@@ -35,9 +35,9 @@ urlpatterns = [
     path('/network-ad',NetworkAd.as_view()),
     path('/matchup/item',MatchUpItem.as_view()),
     path('/matchup/search', CompanyMatchupSearch.as_view()),
-    path('/modify/logo', CompanyLogoModify.as_view()),
+    path('/logo', CompanyLogo.as_view()),
     path('/images', CompanyImages.as_view()),
-    # path('/modify/image', CompanyImageModify.as_view()),
+    path('/modify/image', CompanyImageModify.as_view()),
     path('/delete/image', CompanyImageDelete.as_view()),
     path('/applicant', ApplicantView.as_view()),
     path('/applicant/<int:volunteer_id>', ApplicantDetailView.as_view()),
