@@ -121,12 +121,13 @@ class CompanyRegister(View):
     def get(self, request):
         try:
             user = request.user
-            company = Company.objects.get(user_id=user.id)
+            company = Company.objects.prefetch_related('image_set').get(user_id=user.id)
             workplace = Workplace.objects.filter(company_id=company.id)
             data = [
                 {
                     'id':company.id,
                     'name':company.name,
+                    'logo':company.image_set.first().image_url if company.image_set.first() else None,
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
