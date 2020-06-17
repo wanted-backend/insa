@@ -492,16 +492,18 @@ class CompanyInterviewResume(View):
     @login_decorator
     def get(self, request):
         try:
-            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+            resume = Resume.objects.get(user_id=request.user.id)
             interviews = Proposal.objects.filter(resume_id=resume.id)
             data = [
                 {
+                    'id':interview.id,
+                    'company_id':interview.company.id,
                     'name':interview.company.name,
-                    'logo':interview.company.image_url,
+                    'image':Image.objects.filter(company_id=interview.company.id).first().image_url if Image.objects.filter(company_id=interview.company.id) else None,
                     'date':interview.created_at
                 } for interview in interviews
             ]
-            return JsonResponse({'is_resume_request':data}, status=200)
+            return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
