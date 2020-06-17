@@ -9,12 +9,16 @@ import math
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
-from django.db.models       import Q, Count, F
+from django.db.models       import Q, Count, F , When
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
 from datetime               import date
-# from iamport                import Iamport
+from iamport                import Iamport
+from celery                 import task
+from celery.decorators      import periodic_task
+from celery.task.schedules  import crontab
+from celery.utils.log       import get_task_logger
 
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career, Education
@@ -996,6 +1000,14 @@ class MatchUpItem(View):
 
         return JsonResponse({"plans" : plans} , status=200)
     
+@periodic_task(run_every=crontab(minute="59", hour="23"))
+def do_every_midnight():
+    
+    item = Position_item.objects.all()
+    item.filter(Q(start_date__lte=date.today()) & Q(end_date__gte=date.today()) & Q(is_valid=True)).update(expiration=2)
+    item.filter(Q(start_date__gte=date.today()) & Q(is_valid=True)).update(expiration=1)
+    item.filter(Q(end_date__lte=date.today()) & Q(is_valid=True)).update(expiration=3)
+    
 class JobAdState(View):
 
     @login_decorator
@@ -1003,7 +1015,8 @@ class JobAdState(View):
 
         user = request.user
         company = Company.objects.get(user_id=user.id)
-        item = Position_item.objects.filter(company_id=company.id)
+        item = Position_item.objects.filter(Q(company_id = company.id) &
+                                            Q(is_valid   = True))
 
         state = [{
             "item"          : stat.item.name, # 1 직무상단 2 네트워크 광고
@@ -1016,22 +1029,79 @@ class JobAdState(View):
 
         return JsonResponse({"response" : state},status=200)
 
-class MatchUpItemPurchased(View):
+def get_token():
+    
+    iamport = Iamport(imp_key=config.IMP_KEY, imp_secret=config.IMP_SECRET)
+    
+    return iamport 
+
+class MatchUpPrepare(View):
     
     @login_decorator
     def post(self,request):
+        
+        data  = json.loads(request.body)
+        token = get_token()
+        try:
+            token.prepare(amount=data['amount'],merchant_uid=data['merchant_uid'])
+            
+        except KeyError:
+            
+            return JsonResponse({"message" : "키 값이 잘못되었습니다"},status=401)
+        
+        except Iamport.ResponseError as e:
+            
+            return JsonResponse({"message" : "iamport 서버 응답 에러"},status=401)
+        
+        except Iamport.HttpError as http_error:
+            
+            return JsonResponse({"message" : "상태 응답 에러"},status=400)
+        
+        return HttpResponse(status=200)
+        
+class MatchUpItemPurchased(View):
+        
+    @login_decorator
+    def post(self,request):
+        
+        user         = request.user
+        token        = get_token()
+        imp_uid      = request.POST.get('imp_uid')
+        print(imp_uid)
+        merchant_uid = request.POST.get('merchant_uid')
+        paid_amount  = request.POST.get('paid_amount')
+        print(paid_amount)
+        get_status   = token.find_by_imp_uid(imp_uid)
+        try:
+            paid = token.is_paid(paid_amount, imp_uid=imp_uid)
+        except:
+            return JsonResponse({"message" : f"해당 imp_uid : {imp_uid} 의 내역을 찾을 수 없습니다."},status=401)        
+        
+        if paid :
+            return JsonResponse({"message" : "결제에 성공했습니다."},status=200)
+        else:
+            if get_status['status'] != 'cancelled':
+                
+                try:
+                    
+                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid) 
+                    
+                except Iamport.ResponseError as e:
+                    
+                    return JsonResponse({"error_code"    : e.code ,
+                                         "error_message" : e.message },status=401)
+                    
+                except Iamport.HttpError as http_error:
 
-        data = json.loads(request.body)
-
-        DEFAULT_TEST_IMP_KEY = 'imp_apikey'
-        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9OqDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
-
-
-    # def get(self,request):
-
-
+                    return JsonResponse({"error_code"    : http_error.code,
+                                         "error_message" : http_error.reason},status=401)
+                    
+                return JsonResponse({"message" : "결제 취소"},status=400)
+            return JsonResponse({"message":"결제 정보가 맞지않아 결제에 실패했습니다."},status=400)
+            
 
 class CompanyReadingResume(View):
+    
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
