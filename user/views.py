@@ -133,7 +133,7 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'logo':want.company.image_url,
+                    'image':Image.objects.filter(company_id=want.company.id).first().image_url,
                     'date':want.created_at
                 } for want in companies
             ]
@@ -585,16 +585,18 @@ class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
         try:
-            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
-            requests_resume = Company_matchup.objects.filter(resume_id=resume.id)
+            user = User.objects.get(id=request.user.id)
+            requests_resume = Company_matchup.objects.filter(user_id=request.user.id)
             data = [
                 {
+                    'id':request.id,
+                    'company_id':request.company.id,
                     'name':request.company.name,
-                    'logo':request.company.image_url,
+                    'image':Image.objects.filter(company_id=request.company.id).first().image_url,
                     'date':request.created_at
                 } for request in requests_resume
             ]
-            return JsonResponse({'is_resume_request':data}, status=200)
+            return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
