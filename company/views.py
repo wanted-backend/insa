@@ -755,6 +755,7 @@ class PositionAdvertisement(View):
         position_list =[
             {
                 'id' : position.position.id,
+                'item_id': position.id,
                 'image' : position.position.company.image_set.first().image_url,
                 'company_logo' : position.position.company.image_url,
                 'name' : position.position.name,
@@ -766,8 +767,18 @@ class PositionAdvertisement(View):
         ]
 
         return JsonResponse({'advertisement' : position_list}, status = 200)
-
-
+    
+    def post(self,request):
+        
+        data = json.loads(request.body)
+        
+        item = Position_item.objects.get(id=data['item_id'])
+        item.click += 1 
+        item.save()
+        
+        return HttpResponse(status=200)
+        
+        
 class PositionMain(View):
     def sort_position(self, sort_by, year_filter):
         sort = {
@@ -882,13 +893,14 @@ class JobAdPurchase(View):
 
     @login_decorator
     def post(self,request):
-
+        
+        user = request.user
         data = json.loads(request.body)
         
-        if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) & 
-                                        Q(end_date=data['end_date'])).exists():
+        # if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) & 
+        #                                 Q(end_date=data['end_date'])).exists():
             
-            return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
+        #     return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
 
         front = 'http://192.168.219.108:3000' # 준영님 주소
 
@@ -924,15 +936,19 @@ class JobAdPurchase(View):
         
         item = Position_item.objects.create(
             position   = Position.objects.get(id=data['position_id']),
-            item       = Item.objects.get(id=1),     # 1 직무상단 2 네트워크
-            expiration = Expiration.objects.get(id=1),  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
+            item       = Item.objects.get(id=1),     
+            expiration = Expiration.objects.get(id=1),
             start_date = data['start_date'],
             end_date   = data['end_date'],
+            company_id = Company.objects.filter(user_id=user.id).first().id
         )
-
+        
+        Temp.objects.filter(user=user.id).delete()
+        
         Temp.objects.create(
-            item = Position_item.objects.get(id=item.id),
-            tid  = response['tid']
+            item       = Position_item.objects.get(id=item.id),
+            tid        = response['tid'],
+            user       = user.id
         )
 
         return JsonResponse({ "response" : res },status=200)
@@ -941,10 +957,11 @@ class JobAdPurchased(View):
 
     @login_decorator
     def post(self,request):
-
+        
+        user = request.user
         data = json.loads(request.body)
         
-        tid = Temp.objects.get()
+        tid = Temp.objects.get(user=user.id)
         
         request_url = "https://kapi.kakao.com/v1/payment/approve"
 
@@ -972,8 +989,6 @@ class JobAdPurchased(View):
             Paid          = Position_item.objects.get(id=tid.item.id)
             Paid.is_valid = True
             Paid.save()
-            
-        Temp.objects.all().delete()
         
         return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
@@ -1015,6 +1030,7 @@ class MatchUpItem(View):
         }for plan in item]
 
         return JsonResponse({"plans" : plans} , status=200)
+    
 class JobAdState(View):
 
     @login_decorator
@@ -1043,8 +1059,7 @@ class MatchUpItemPurchased(View):
         data = json.loads(request.body)
 
         DEFAULT_TEST_IMP_KEY = 'imp_apikey'
-        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9O'
-                           'qDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
+        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9OqDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
 
 
     # def get(self,request):
