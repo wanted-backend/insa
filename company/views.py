@@ -882,7 +882,7 @@ class PositionMain(View):
         limit   = int(request.GET.get('limit', 20))
         offset  = int(request.GET.get('offset', 0))
         keyword = request.GET.get('keyword', None)
-
+        
         try:
             position_filter = self.keyword_search(country, city, year, sort_by, keyword)
             position_list =[
@@ -896,11 +896,10 @@ class PositionMain(View):
                     'total_reward' : get_reward_currency(position.id),
                 } for position in position_filter[offset : offset + limit]
             ]
-
             return JsonResponse({'position' : position_list}, status = 200)
 
         except Position.DoesNotExist:
-            return JsonResponse({'message':'INVALID_POSITION'}, status=400)
+            return JsonResponse({'message' : 'INVALID_POSITION'}, status = 400)
 
 class JobAdPosition(View):
 
@@ -1324,7 +1323,7 @@ class CompanyMatchupSearch(View):
     def get(self, request):
         offset      = int(request.GET.get('offset', 0))
         limit       = int(request.GET.get('limit', 10))
-        country     = request.GET.getlist('country', ['한국'])
+        country     = request.GET.getlist('country', ['all'])
         year_from   = int(request.GET.get('year_from', 0))
         year_to     = int(request.GET.get('year_to', 20))
         keyword     = request.GET.get('keyword', None)
@@ -1334,6 +1333,7 @@ class CompanyMatchupSearch(View):
             company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
             total_amount  = len(resume_search)
+            
             resume_list = [
                 {
                     'id' : resume.id,
