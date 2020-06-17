@@ -269,12 +269,14 @@ class CompanyImageModify(View):
                 image_id = data['image_id']
                 company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
                 image = company.image_set.get(id=image_id)
-                image.image_url = data['image_url']
+                image.image_url = '/static/'+data['image_url']
                 image.save()
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Image.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID IMAGES'}, status=401)
 
 class CompanyImageDelete(View):
     @login_decorator
