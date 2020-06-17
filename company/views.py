@@ -399,7 +399,9 @@ class CompanyPosition(View):
                 benefit = data['benefit'],
                 referrer = data['referrer'],
                 volunteer = data['volunteer'],
-                total = data['total']
+                total = data['total'],
+                country_id = city.country.id,
+                city_id = city.id
             )
             for role in data['role']:
                 positions = Position.objects.get(id=position.id)
