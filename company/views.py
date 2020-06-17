@@ -325,7 +325,7 @@ class CompanyPosition(View):
         company = Company.objects.prefetch_related('position_set','image_set').get(user_id=request.user.id)
         images = company.image_set.filter(company_id=company.id)
         position = company.position_set.get(id=position_id)
-        address = Workplace.objects.get(company_id=company.id, represent=True)
+        address = Position_workplace.objects.get(position_id=position.id)
 
         is_always = '상시' if position.always==True else position.expiry_date
         is_entry_min = 0 if position.entry==True else position.min_level
@@ -345,7 +345,7 @@ class CompanyPosition(View):
                     'preferred':is_preferred,
                     'benefit':position.benefit,
                     'expiry_date':is_always,
-                    'address':address.address,
+                    'address':address.workplace.address,
                     'min_level':is_entry_min,
                     'max_level':is_entry_max
                 }
