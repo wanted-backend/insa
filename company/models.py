@@ -255,6 +255,7 @@ class Role(models.Model):
 class Company_matchup(models.Model):
 
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=0)
@@ -295,13 +296,7 @@ class Company_matchup_item(models.Model):
 class Proposal(models.Model):
     company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True)
     resume = models.ForeignKey('user.Resume', on_delete=models.SET_NULL, null=True)
-    position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True)
-    content = models.TextField()
-    title = models.CharField(max_length=100)
-    start = models.IntegerField(default=0)
-    end = models.IntegerField(default=0)
-    place = models.CharField(max_length=200)
-    stock = models.CharField(max_length=100)
+    user = models.ForeignKey('user.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

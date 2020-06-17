@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         PositionBookmarkView, PositionApplyView, CompanyRequestResume, CompanyReadingResume, \
-        JobAdPosition, MatchupList, ThemeList, HomeView, CompanyLikedResume, \
+        JobAdPosition, ThemeList, HomeView, CompanyLikedResume, \
         PositionAdvertisement, PositionMain, PositionFilter, TagView, TagSearch, JobAdPurchase, \
         JobAdPurchased, MatchUpItem, CompanyProposalsResume, CompanyInfomationModify, \
         NetworkAd, CompanyMatchupSearch, CompanyLogoModify, CompanyImages, CompanyImageModify, \
@@ -20,7 +20,6 @@ urlpatterns = [
     path('/request/matchup', CompanyRequestResume.as_view()),
     path('/position/<int:position_id>/bookmark', PositionBookmarkView.as_view()),
     path('/position/<int:position_id>/apply', PositionApplyView.as_view()),
-    path('/matchup/list', MatchupList.as_view()),
     path('/themelist/<int:theme_id>', ThemeList.as_view()),
     path('/home', HomeView.as_view()),
     path('/job-ad/positions', JobAdPosition.as_view()),
