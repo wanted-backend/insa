@@ -94,10 +94,10 @@ class IndustryView(View):
         data = [
             {
                 'id':industry.id,
-                'year':industry.name
+                'industry':industry.name
             } for industry in industries
         ]
-        return JsonResponse({'years':data}, status=200)
+        return JsonResponse({'industries':data}, status=200)
 
 class CompanyRegister(View):
     @login_decorator
