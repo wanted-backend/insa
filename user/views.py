@@ -12,7 +12,8 @@ from django.db.models   import Q
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
-from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country
+
+from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country, Volunteers, Bookmark
 from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
 
 class UserEmailExists(View):
@@ -133,7 +134,7 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'logo':want.company.image_url,
+                    'image':Image.objects.filter(company_id=want.company.id).first().image_url,
                     'date':want.created_at
                 } for want in companies
             ]
@@ -585,16 +586,18 @@ class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
         try:
-            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
-            requests_resume = Company_matchup.objects.filter(resume_id=resume.id)
+            user = User.objects.get(id=request.user.id)
+            requests_resume = Company_matchup.objects.filter(user_id=request.user.id)
             data = [
                 {
+                    'id':request.id,
+                    'company_id':request.company.id,
                     'name':request.company.name,
-                    'logo':request.company.image_url,
+                    'image':Image.objects.filter(company_id=request.company.id).first().image_url,
                     'date':request.created_at
                 } for request in requests_resume
             ]
-            return JsonResponse({'is_resume_request':data}, status=200)
+            return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
@@ -782,17 +785,6 @@ class MatchUpRegistrationView(View):
 
         return HttpResponse(status = 200)
 
-def get_reward_currency(position_id):
-    position=Position.objects.get(id=position_id)
-    currency=position.country.english_currency
-    reward=format(position.total, ',')
-
-    if position.country.id==3 or position.country.id==4 or position.country.id==6:
-        total_reward=reward+currency
-        return total_reward
-    else:
-        total_reward=currency+reward
-        return total_reward
 
 class UserImageUploadView(View):
     @login_decorator
@@ -853,6 +845,19 @@ class ApplicantResumeView(View):
 
         return JsonResponse({'data':data}, status = 200)
 
+def get_reward_currency(position_id):
+    position = Position.objects.get(id = position_id)
+    currency = position.country.english_currency
+    reward   = format(position.total, ',')
+
+    if position.country.id == 3 or position.country.id == 4 or position.country.id == 6:
+        total_reward = reward + currency
+        return total_reward
+
+    else:
+        total_reward = currency + reward
+        return total_reward
+
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
@@ -872,12 +877,17 @@ class UserBookmark(View):
 class UserApplyView(View):
     @login_decorator
     def get(self, request):
-        user_id = request.user.id
-        applied_position = Volunteers.objects.filter(user_id = user_id)
+        applied_position = (
+            Position
+            .objects
+            .select_related('company').
+            prefetch_related('volunteers_set')
+            .filter(volunteers__user_id = request.user.id)
+        )
         applied_list =[{
-            'company' : position.position.company.name,
-            'position' : position.position.name,
-            'applied_at' : position.created_at
+            'company' : position.company.name,
+            'position' : position.name,
+            'applied_at' : position.volunteers_set.get().created_at
         } for position in applied_position]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)
