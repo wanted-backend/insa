@@ -109,6 +109,8 @@ class CompanyRegister(View):
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except User.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID USER'}, status=401)
 
     @login_decorator
     def get(self, request):
