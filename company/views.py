@@ -303,7 +303,8 @@ class CompanyImageDelete(View):
 class CompanyPosition(View):
     @login_decorator
     def get(self, request, position_id):
-        company = Company.objects.get(user_id=request.user.id)
+        company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
+        images = company.image_set.filter(company_id=company.id)
         position = Position.objects.get(id=position_id)
         address = Workplace.objects.get(company_id=company.id, represent=True)
         is_always = '상시' if position.always==True else position.expiry_date
@@ -316,6 +317,7 @@ class CompanyPosition(View):
                     'id':position.id,
                     'company_id':company.id,
                     'company':company.name,
+                    'image' : [image.image_url for image in images],
                     'name':position.name,
                     'role':{position.role.id:position.role.name},
                     'description':position.description,
@@ -405,7 +407,6 @@ class PositionList(View):
     def get(self, request):
         user = request.user
         company = Company.objects.prefetch_related('position_set', 'image_set').get(user_id=user.id)
-        print(company.id)
         positions = company.position_set.filter(company_id=company.id)
         workplace = Workplace.objects.filter(company_id=company.id)
         data = [
