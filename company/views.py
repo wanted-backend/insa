@@ -738,6 +738,26 @@ class CompanyRequestResume(View):
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
+    @login_decorator
+    def post(self, request):
+        data = json.loads(request.body)
+        try:
+            if 'resume_id' in data:
+                resume_id = data['resume_id']
+                resume = Resume.objects.get(id=resume_id)
+                company = Company.objects.get(user_id=request.user.id)
+                if Company_matchup.objects.filter(company_id=company.id, resume_id=resume_id, status=True).exists():
+                    return JsonResponse({'MESSAGE':'이미 요청됨'}, status=401)
+                Company_matchup.objects.create(
+                    company_id=company.id,
+                    user_id=resume.user.id,
+                    resume_id=resume_id,
+                    status = True
+                )
+                return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
 class PositionAdvertisement(View):
     def get(self, request):
         advertisement_list = (
