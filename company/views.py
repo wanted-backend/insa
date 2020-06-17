@@ -213,6 +213,20 @@ class CompanyInfomationModify(View):
 
 class CompanyLogo(View):
     @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            data = [
+                {
+                    'id':company.id,
+                    'logo':company.image_url
+                }
+            ]
+            return JsonResponse({'logo':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
+    @login_decorator
     def post(self, request):
         data = json.loads(request.body)
         try:
@@ -305,10 +319,11 @@ class CompanyImageDelete(View):
 class CompanyPosition(View):
     @login_decorator
     def get(self, request, position_id):
-        company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
+        company = Company.objects.prefetch_related('position_set','image_set').get(user_id=request.user.id)
         images = company.image_set.filter(company_id=company.id)
-        position = Position.objects.get(id=position_id)
+        position = company.position_set.get(id=position_id)
         address = Workplace.objects.get(company_id=company.id, represent=True)
+
         is_always = '상시' if position.always==True else position.expiry_date
         is_entry_min = 0 if position.entry==True else position.min_level
         is_entry_max = 1 if position.entry==True else position.max_level
@@ -346,7 +361,7 @@ class CompanyPosition(View):
             coordinates = getGPS_coordinates_for_KAKAO(address)
             city = City.objects.get(name=coordinates[2])
             company = Company.objects.get(user_id=request.user.id)
-            workplace = Workplace.objects.get(company_id=company.id, represent=True)
+        
             place = Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city_id = city.id,
@@ -355,8 +370,9 @@ class CompanyPosition(View):
                 lat = coordinates[0],
                 lng = coordinates[1]
             )
+
             company = Company.objects.get(user_id=request.user.id)
-            place = Workplace.objects.get(company_id=company.id, represent=True)
+            workplace = Workplace.objects.get(company_id=company.id, represent=True)
             is_entry_min = 0 if data['entry']==True else data['min_level']
             is_entry_max = 1 if data['entry']==True else data['max_level']
             is_always = None if data['always']==True else data['expiry_date']
