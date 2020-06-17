@@ -467,7 +467,7 @@ class DetailView(View):
     def get(self, request, position_id):
         offset  = int(request.GET.get('offset', 0))
         limit   = int(request.GET.get('limit', 8))
-        
+
         try:
             user_id = request.user.id
         except:
@@ -732,18 +732,18 @@ class PositionAdvertisement(View):
         ]
 
         return JsonResponse({'advertisement' : position_list}, status = 200)
-    
+
     def post(self,request):
-        
+
         data = json.loads(request.body)
-        
+
         item = Position_item.objects.get(id=data['item_id'])
-        item.click += 1 
+        item.click += 1
         item.save()
-        
+
         return HttpResponse(status=200)
-        
-        
+
+
 class PositionMain(View):
     def sort_position(self, sort_by, year_filter):
         sort = {
@@ -841,7 +841,7 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-    
+
     @login_decorator
     def get(self,request):
 
@@ -858,13 +858,10 @@ class JobAdPurchase(View):
 
     @login_decorator
     def post(self,request):
-        
+
         user = request.user
         data = json.loads(request.body)
-        
-        # if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) & 
-        #                                 Q(end_date=data['end_date'])).exists():
-            
+
         #     return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
 
         front = 'http://192.168.219.108:3000' # 준영님 주소
@@ -898,18 +895,18 @@ class JobAdPurchase(View):
             'redirect'       : response['next_redirect_pc_url'],
             'created_at'     : response['created_at'],
         }
-        
+
         item = Position_item.objects.create(
             position   = Position.objects.get(id=data['position_id']),
-            item       = Item.objects.get(id=1),     
+            item       = Item.objects.get(id=1),
             expiration = Expiration.objects.get(id=1),
             start_date = data['start_date'],
             end_date   = data['end_date'],
             company_id = Company.objects.filter(user_id=user.id).first().id
         )
-        
+
         Temp.objects.filter(user=user.id).delete()
-        
+
         Temp.objects.create(
             item       = Position_item.objects.get(id=item.id),
             tid        = response['tid'],
@@ -922,12 +919,12 @@ class JobAdPurchased(View):
 
     @login_decorator
     def post(self,request):
-        
+
         user = request.user
         data = json.loads(request.body)
-        
+
         tid = Temp.objects.get(user=user.id)
-        
+
         request_url = "https://kapi.kakao.com/v1/payment/approve"
 
         headers1 = {
@@ -943,8 +940,8 @@ class JobAdPurchased(View):
             'pg_token'        : data['pg_token'],
             'total_amount'    : 100,
         }
-        
-        
+
+
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
         Is_Paid = False
@@ -954,7 +951,7 @@ class JobAdPurchased(View):
             Paid          = Position_item.objects.get(id=tid.item.id)
             Paid.is_valid = True
             Paid.save()
-        
+
         return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
 class NetworkAd(View):
@@ -995,7 +992,7 @@ class MatchUpItem(View):
         }for plan in item]
 
         return JsonResponse({"plans" : plans} , status=200)
-    
+
 class JobAdState(View):
 
     @login_decorator
@@ -1017,7 +1014,7 @@ class JobAdState(View):
         return JsonResponse({"response" : state},status=200)
 
 class MatchUpItemPurchased(View):
-    
+
     @login_decorator
     def post(self,request):
 
@@ -1163,7 +1160,7 @@ class CompanyMatchupSearch(View):
             4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
             5 : resume.filter(proposal__company_id = company_id)
             }.get(resume_list, resume)
-    
+
         return self.keyword_search(keyword, country, year_from, year_to, resume_list)
 
     def get_duration(self, end_year, end_month, start_year, start_month):
@@ -1208,12 +1205,12 @@ class CompanyMatchupSearch(View):
                     'school' : resume.education_set.first().school,
                     'specialism' : resume.education_set.first().specialism,
                     'liked' : Like.objects.filter(
-                                                Q(company_id = company_id) & 
-                                                Q(resume_id = resume.id) & 
+                                                Q(company_id = company_id) &
+                                                Q(resume_id = resume.id) &
                                                 Q(status = 1)
                                                 ).exists(),
                     'requested' : Company_matchup.objects.filter(
-                                                            Q(company_id = company_id) 
+                                                            Q(company_id = company_id)
                                                             & Q(resume_id = resume.id)
                                                             )
                 } for resume in resume_search.order_by('-created_at')[offset : offset + limit]

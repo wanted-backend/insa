@@ -306,6 +306,6 @@ class Temp(models.Model):
     item = models.ForeignKey('Position_item',on_delete=models.SET_NULL, null=True)
     tid  = models.CharField(max_length=100 , null=True)
     user = models.IntegerField(null=True)
-    
+
     class Meta:
         db_table = 'temps'
