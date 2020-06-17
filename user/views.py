@@ -889,10 +889,12 @@ class UserApplyView(View):
             prefetch_related('volunteers_set')
             .filter(volunteers__user_id = request.user.id)
         )
-        applied_list =[{
-            'company' : position.company.name,
-            'position' : position.name,
-            'applied_at' : position.volunteers_set.get().created_at
-        } for position in applied_position]
+        applied_list =[
+            {
+                'company' : position.company.name,
+                'position' : position.name,
+                'applied_at' : position.volunteers_set.get().created_at
+            } for position in applied_position
+        ]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)
