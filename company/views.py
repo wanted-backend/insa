@@ -32,8 +32,8 @@ def getGPS_coordinates_for_KAKAO(address):
         address = address.encode("utf-8")
         p = urllib.parse.urlencode({'query': address})
         api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
-        lat = api.json()['documents'][0]['x']
-        lng = api.json()['documents'][0]['y']
+        lat = api.json()['documents'][0]['y']
+        lng = api.json()['documents'][0]['x']
         city = api.json()['documents'][0]['address']['region_1depth_name']
         result = [lat, lng, city]
         return result
