@@ -8,7 +8,8 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
 from datetime           import datetime
-from django.db.models   import Q, F
+from django.db.models   import Q, F, Func, Value
+from django.db.models.functions import Replace
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
@@ -230,16 +231,17 @@ class UserResumeWriteView(View):
 
             print(data)
 
-            Resume.objects.filter(id=main_resume_id)
+            resume = Resume.objects.get(id=main_resume_id)
 
             resume.title        = data['title']
             resume.name         = data['name']
             resume.email        = data['email']
             resume.contact      = data['phone']
-            resume.description  = data['about']
+            resum.description  = data['about']
             resume.image_url    = data['image']
             resume.status       = data['status']
-            resume.save()
+            print(resume.description)
+            resume.save(update_fields=['title','name','email','contact','description','image_url','status'])
 
             return HttpResponse(status=200)
 
