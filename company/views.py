@@ -114,6 +114,8 @@ class CompanyRegister(View):
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
         except User.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID USER'}, status=401)
+        except AttributeError:
+            return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
     @login_decorator
     def get(self, request):
