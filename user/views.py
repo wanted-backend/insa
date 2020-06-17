@@ -8,7 +8,8 @@ from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
 from datetime           import datetime
-from django.db.models   import Q
+from django.db.models   import Q, F, Func, Value
+from django.db.models.functions import Replace
 
 from utils              import login_decorator
 from insa.settings      import SECRET_KEY
@@ -134,7 +135,7 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'image':Image.objects.filter(company_id=want.company.id).first().image_url,
+                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id)[1] else '',
                     'date':want.created_at
                 } for want in companies
             ]
@@ -153,7 +154,6 @@ class ResumeMainView(View):
         )
 
         for resume in resumeMain:
-            print(resume['title'])
             if resume['title']== None:
                 resume['title']=""
             if resume['status'] == False:
@@ -171,6 +171,7 @@ class ResumeView(View):
         resume          = Resume.objects.create()
         resume.user_id  = user.id
         resume.status   = True
+        resume.title    = "새로운 문서"
         resume.save()
 
         print(resume.id)
@@ -226,11 +227,11 @@ class UserResumeWriteView(View):
     def post(self, request, main_resume_id):
         try:
             data = json.loads(request.body)
-            user = request.user
+
+            print(data)
 
             resume = Resume.objects.get(id=main_resume_id)
 
-            resume.id           = main_resume_id
             resume.title        = data['title']
             resume.name         = data['name']
             resume.email        = data['email']
@@ -238,7 +239,7 @@ class UserResumeWriteView(View):
             resume.description  = data['about']
             resume.image_url    = data['image']
             resume.status       = data['status']
-            resume.save()
+            resume.save(update_fields=['title','name','email','contact','description','image_url','status'])
 
             return HttpResponse(status=200)
 
@@ -489,16 +490,18 @@ class CompanyInterviewResume(View):
     @login_decorator
     def get(self, request):
         try:
-            resume = Resume.objects.get(user_id=request.user.id, is_matchup=True)
+            resume = Resume.objects.get(user_id=request.user.id)
             interviews = Proposal.objects.filter(resume_id=resume.id)
             data = [
                 {
+                    'id':interview.id,
+                    'company_id':interview.company.id,
                     'name':interview.company.name,
-                    'logo':interview.company.image_url,
+                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id)[1] else '',
                     'date':interview.created_at
                 } for interview in interviews
             ]
-            return JsonResponse({'is_resume_request':data}, status=200)
+            return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
@@ -593,7 +596,7 @@ class CompanyRequestsResume(View):
                     'id':request.id,
                     'company_id':request.company.id,
                     'name':request.company.name,
-                    'image':Image.objects.filter(company_id=request.company.id).first().image_url,
+                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id)[1] else '',
                     'date':request.created_at
                 } for request in requests_resume
             ]
@@ -657,33 +660,33 @@ class UserMatchUpResumeView(View):
 
         if len(mainResume.education_set.values())!=0:
             if mainResume.education_set.values()[0]['school']==None or mainResume.education_set.values()[0]['school']=="":
-                school = '학교 미입력'
+                school = ""
             else:
                 school = mainResume.education_set.values()[0]['school']
 
             if mainResume.education_set.values()[0]['specialism']==None or mainResume.education_set.values()[0]['specialism']=="":
-                specialism = '전공 미입력'
+                specialism = ""
             else:
                 specialism = mainResume.education_set.values()[0]['specialism']
         else:
-            school      = "학교 미입력"
-            specialism  = "전공 미입력"
+            school      = ""
+            specialism  = ""
 
         if len(mainResume.career_set.values())!=0:
             if mainResume.career_set.values()[0]['company']==None or mainResume.career_set.values()[0]['company']=="":
-                company = '직장 미입력'
+                company = ""
             else:
                 company = mainResume.career_set.values()[0]['company']
             if mainResume.career_set.values()[0]['position']==None or mainResume.career_set.values()[0]['position']=="":
-                position = '직책 미입력'
+                position = ""
             else:
                 position = mainResume.career_set.values()[0]['position']
         else:
-            company     = '직장 미입력'
-            position    = '직책 미입력'
+            company     = ""
+            position    = ""
 
         if mainResume.description==None or mainResume.description=="":
-            description="자기소개 미입력"
+            description=""
         else:
             description=mainResume.description
         data =[
@@ -810,7 +813,7 @@ class ApplicantResumeView(View):
         user_resume = (
             Resume.objects
             .select_related('user')
-            .prefetch_related('career_set', 'education_set', 'link_set')
+            .prefetch_related('career_set', 'education_set', 'link_set', 'award_set')
             .get(id=main_resume_id)
         )
 
@@ -835,12 +838,14 @@ class ApplicantResumeView(View):
             careers.append(career)
 
         data ={
-            'name'      : user_resume.user.name,
-            'email'     : user_resume.email,
-            'contact'   : user_resume.contact,
-            'career'    : careers,
-            'education' : [educations for educations in user_resume.education_set.values()],
-            'link'      : [links for links in user_resume.link_set.values()]
+            'name'          : user_resume.user.name,
+            'email'         : user_resume.email,
+            'contact'       : user_resume.contact,
+            'description'   : user_resume.description,
+            'career'        : careers,
+            'award'         : [awards for awards in user_resume.award_set.values()],
+            'education'     : [educations for educations in user_resume.education_set.values()],
+            'link'          : [links for links in user_resume.link_set.values()]
         }
 
         return JsonResponse({'data':data}, status = 200)

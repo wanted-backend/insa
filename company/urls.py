@@ -5,9 +5,10 @@ from .views import CompanyRegister, CompanyPosition, PositionList, DetailView, \
         JobAdPosition, ThemeList, HomeView, CompanyLikedResume, \
         PositionAdvertisement, PositionMain, PositionFilter, TagView, TagSearch, JobAdPurchase, \
         JobAdPurchased, MatchUpItem, CompanyProposalsResume, CompanyInfomationModify, \
-        NetworkAd, CompanyMatchupSearch, CompanyLogoModify, CompanyImages, CompanyImageModify, \
+        NetworkAd, CompanyMatchupSearch, CompanyLogo, CompanyImages, CompanyImageModify, \
         CompanyImageDelete, ApplicantView, ApplicantDetailView, EmployeeView, WorkplaceView, \
-        CountryView, CityView, JobAdState , MatchUpItemPurchased , MatchUpPrepare
+        CountryView, CityView, JobAdState , MatchUpItemPurchased , MatchUpPrepare , FoundationYearView, \
+        IndustryView
 
 urlpatterns = [
     path('/register', CompanyRegister.as_view()),
@@ -35,15 +36,17 @@ urlpatterns = [
     path('/network-ad',NetworkAd.as_view()),
     path('/matchup/item',MatchUpItem.as_view()),
     path('/matchup/search', CompanyMatchupSearch.as_view()),
-    path('/modify/logo', CompanyLogoModify.as_view()),
+    path('/logo', CompanyLogo.as_view()),
     path('/images', CompanyImages.as_view()),
-    # path('/modify/image', CompanyImageModify.as_view()),
+    path('/modify/image', CompanyImageModify.as_view()),
     path('/delete/image', CompanyImageDelete.as_view()),
     path('/applicant', ApplicantView.as_view()),
     path('/applicant/<int:volunteer_id>', ApplicantDetailView.as_view()),
     path('/employee', EmployeeView.as_view()),
     path('/country', CountryView.as_view()),
     path('/city', CityView.as_view()),
+    path('/year', FoundationYearView.as_view()),
+    path('/industry', IndustryView.as_view()),
     path('/address', WorkplaceView.as_view()),
     path('/job-ad/home', JobAdState.as_view()),
     path('/matchup/purchase', MatchUpItemPurchased.as_view()),
