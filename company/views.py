@@ -1155,7 +1155,8 @@ class TagView(View):
     def get(self, request):
         tag_list = [
             {
-                category.name : [tag.name for tag in category.tag_set.all()]
+                'category' : category.name,
+                'tags' : [tag.name for tag in category.tag_set.all()]
             } for category in Category.objects.all()
         ]
 
