@@ -306,7 +306,7 @@ class CompanyImageDelete(View):
                 image_id = data['image_id']
                 company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
                 images = company.image_set.filter(company_id=company.id)
-                if images.count() == 2:
+                if images.count() <= 2:
                     return JsonResponse({'MESSAGE': '더 이상 삭제할 수 없습니다. 이미지는 최소 2장 이상 업로드 해주세요.'}, status=401)
                 Image.objects.get(id=image_id).delete()
                 data = [
