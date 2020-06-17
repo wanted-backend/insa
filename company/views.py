@@ -127,7 +127,7 @@ class CompanyRegister(View):
                 {
                     'id':company.id,
                     'name':company.name,
-                    'logo':company.image_set.first().image_url if company.image_set.first() else None,
+                    'logo':company.image_set.first().image_url if company.image_set.first() else '',
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
@@ -443,7 +443,7 @@ class PositionList(View):
         data = [
             {
                 'id' : position.id,
-                'image' : position.company.image_set.first().image_url if position.company.image_set.first() else None,
+                'image' : position.company.image_set.first().image_url if position.company.image_set.first() else '',
                 'name' : position.name,
                 'company' : position.company.name,
                 'city' : workplace.first().city.name,
