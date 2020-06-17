@@ -865,7 +865,7 @@ class JobAdPosition(View):
         return JsonResponse({ "positions" : positions },status=200)
 
 class JobAdPurchase(View):
-    
+
     @login_decorator
     def get(self,request):
 
@@ -883,12 +883,13 @@ class JobAdPurchase(View):
     @login_decorator
     def post(self,request):
 
+        user = request.user
         data = json.loads(request.body)
-        
-        if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) & 
-                                        Q(end_date=data['end_date'])).exists():
-            
-            return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
+
+        # if Position_item.objects.filter(Q(position_id=data['position_id']) & Q(start_date=data['start_date']) &
+        #                                 Q(end_date=data['end_date'])).exists():
+
+        #     return JsonResponse({"message" : "이미 해당 포지션에 구매한 아이템이 존재합니다."} , status=400)
 
         front = 'http://192.168.219.108:3000' # 준영님 주소
 
@@ -921,14 +922,17 @@ class JobAdPurchase(View):
             'redirect'       : response['next_redirect_pc_url'],
             'created_at'     : response['created_at'],
         }
-        
+
         item = Position_item.objects.create(
             position   = Position.objects.get(id=data['position_id']),
             item       = Item.objects.get(id=1),     # 1 직무상단 2 네트워크
             expiration = Expiration.objects.get(id=1),  # 1 사용전 # 2 사용중 # 3 사용완료 디폴트 1이 들어와야 함
             start_date = data['start_date'],
             end_date   = data['end_date'],
+            company_id = Company.objects.filter(user_id=user.id).first().id
         )
+
+        Temp.objects.all().delete()
 
         Temp.objects.create(
             item = Position_item.objects.get(id=item.id),
@@ -943,9 +947,9 @@ class JobAdPurchased(View):
     def post(self,request):
 
         data = json.loads(request.body)
-        
+
         tid = Temp.objects.get()
-        
+
         request_url = "https://kapi.kakao.com/v1/payment/approve"
 
         headers1 = {
@@ -961,8 +965,8 @@ class JobAdPurchased(View):
             'pg_token'        : data['pg_token'],
             'total_amount'    : 100,
         }
-        
-        
+
+
         response = requests.post(request_url,params=params1,headers=headers1)
         response = json.loads(response.text)
         Is_Paid = False
@@ -972,9 +976,9 @@ class JobAdPurchased(View):
             Paid          = Position_item.objects.get(id=tid.item.id)
             Paid.is_valid = True
             Paid.save()
-            
+
         Temp.objects.all().delete()
-        
+
         return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
 class NetworkAd(View):
@@ -1036,7 +1040,7 @@ class JobAdState(View):
         return JsonResponse({"response" : state},status=200)
 
 class MatchUpItemPurchased(View):
-    
+
     @login_decorator
     def post(self,request):
 

@@ -818,7 +818,7 @@ class ApplicantResumeView(View):
         user_resume = (
             Resume.objects
             .select_related('user')
-            .prefetch_related('career_set', 'education_set', 'link_set')
+            .prefetch_related('career_set', 'education_set', 'link_set', 'award_set')
             .get(id=main_resume_id)
         )
 
@@ -843,12 +843,14 @@ class ApplicantResumeView(View):
             careers.append(career)
 
         data ={
-            'name'      : user_resume.user.name,
-            'email'     : user_resume.email,
-            'contact'   : user_resume.contact,
-            'career'    : careers,
-            'education' : [educations for educations in user_resume.education_set.values()],
-            'link'      : [links for links in user_resume.link_set.values()]
+            'name'          : user_resume.user.name,
+            'email'         : user_resume.email,
+            'contact'       : user_resume.contact,
+            'description'   : user_resume.description,
+            'career'        : careers,
+            'award'         : [awards for awards in user_resume.award_set.values()],
+            'education'     : [educations for educations in user_resume.education_set.values()],
+            'link'          : [links for links in user_resume.link_set.values()]
         }
 
         return JsonResponse({'data':data}, status = 200)
