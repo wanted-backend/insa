@@ -229,15 +229,13 @@ class UserResumeWriteView(View):
             data = json.loads(request.body)
             user = request.user
 
-            print(data)
-
             resume = Resume.objects.get(id=main_resume_id)
 
             resume.title        = data['title']
             resume.name         = data['name']
             resume.email        = data['email']
             resume.contact      = data['phone']
-            resum.description  = data['about']
+            resume.description  = data['about']
             resume.image_url    = data['image']
             resume.status       = data['status']
             print(resume.description)

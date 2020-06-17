@@ -821,7 +821,7 @@ class PositionMain(View):
                 keyword_filter.add(Q(name__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(company__name__icontains = keyword), Q.OR)
 
-            position_filter = Position.objects.filter(keyword_filter).distinct()
+            position_filter = Position.objects.filter(keyword_filter)
         else:
             position_filter = Position.objects.all()
 
@@ -836,21 +836,24 @@ class PositionMain(View):
         offset  = int(request.GET.get('offset', 0))
         keyword = request.GET.get('keyword', None)
 
-        position_filter = self.keyword_search(country, city, year, sort_by, keyword)
+        try:
+            position_filter = self.keyword_search(country, city, year, sort_by, keyword)
+            position_list =[
+                {
+                    'id' : position.id,
+                    'image' : position.company.image_set.first().image_url,
+                    'name' : position.name,
+                    'company' : position.company.name,
+                    'city' : position.city.name if position.city else None,
+                    'country' : position.country.name,
+                    'total_reward' : get_reward_currency(position.id),
+                } for position in position_filter[offset : offset + limit]
+            ]
 
-        position_list =[
-            {
-                'id' : position.id,
-                'image' : position.company.image_set.first().image_url,
-                'name' : position.name,
-                'company' : position.company.name,
-                'city' : position.city.name if position.city else None,
-                'country' : position.country.name,
-                'total_reward' : get_reward_currency(position.id),
-            } for position in position_filter[offset : offset + limit]
-        ]
+            return JsonResponse({'position' : position_list}, status = 200)
 
-        return JsonResponse({'position' : position_list}, status = 200)
+        except Position.DoesNotExist:
+            return JsonResponse({'message':'INVALID_POSITION'}, status=400)
 
 class JobAdPosition(View):
 
