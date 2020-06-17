@@ -73,6 +73,28 @@ class CityView(View):
         ]
         return JsonResponse({'cities':data}, status=200)
 
+class FoundationYearView(View):
+    def get(self, request):
+        years = Foundation_year.objects.all()
+        data = [
+            {
+                'id':year.id,
+                'year':year.name
+            } for year in years
+        ]
+        return JsonResponse({'years':data}, status=200)
+
+class IndustryView(View):
+    def get(self, request):
+        industries = Industry.objects.all()
+        data = [
+            {
+                'id':industry.id,
+                'year':industry.name
+            } for industry in industries
+        ]
+        return JsonResponse({'years':data}, status=200)
+
 class CompanyRegister(View):
     @login_decorator
     def post(self, request):
