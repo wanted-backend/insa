@@ -1209,7 +1209,7 @@ class CompanyMatchupSearch(View):
         return self.filter_country(country, year_from, year_to, keyword_filter)
 
     def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
-        resume = Resume.objects.all()
+        resume = Resume.objects.filter(is_matchup = 1)
 
         resume_list = {
             1 : resume.filter(company_matchup__company_id = company_id),
@@ -1236,13 +1236,12 @@ class CompanyMatchupSearch(View):
         year_from   = int(request.GET.get('year_from', 0))
         year_to     = int(request.GET.get('year_to', 20))
         keyword     = request.GET.get('keyword', None)
-        resume_list = int(request.GET.get('list', -1))
+        resume_list = int(request.GET.get('resume_list', -1))
 
         try:
             company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
             total_amount  = len(resume_search)
-
             resume_list = [
                 {
                     'id' : resume.id,
@@ -1251,17 +1250,17 @@ class CompanyMatchupSearch(View):
                     'total_career' : resume.total_work,
                     'career' : [
                         {
-                            'company' : career.career_set.company,
+                            'company' : career.company,
                             'duration' : self.get_duration(
-                                            career.career_set.end_year, career.career_set.end_month,
-                                            career.career_set.start_year, career.career_set.start_month
+                                            career.end_year, career.end_month,
+                                            career.start_year, career.start_month
                                         )
                         } for career in resume.career_set.all()
                     ],
                     'description' : resume.description,
-                    'skill' : [skill.matchup_skill.skill for skill in resume.matchup_skill_set.all()],
-                    'school' : resume.education_set.first().school,
-                    'specialism' : resume.education_set.first().specialism,
+                    'skill' : [skill.skill for skill in resume.matchup_skill_set.all()],
+                    'school' : resume.education_set.first().school if resume.education_set.all() else None,
+                    'specialism' : resume.education_set.first().specialism if resume.education_set.all() else None,
                     'liked' : Like.objects.filter(
                                                 Q(company_id = company_id) &
                                                 Q(resume_id = resume.id) &
@@ -1270,7 +1269,7 @@ class CompanyMatchupSearch(View):
                     'requested' : Company_matchup.objects.filter(
                                                             Q(company_id = company_id)
                                                             & Q(resume_id = resume.id)
-                                                            )
+                                                            ).exists()
                 } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
             ]
 

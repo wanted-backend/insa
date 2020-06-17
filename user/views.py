@@ -227,7 +227,8 @@ class UserResumeWriteView(View):
     def post(self, request, main_resume_id):
         try:
             data = json.loads(request.body)
-            user = request.user
+
+            print(data)
 
             resume = Resume.objects.get(id=main_resume_id)
 
@@ -238,7 +239,6 @@ class UserResumeWriteView(View):
             resume.description  = data['about']
             resume.image_url    = data['image']
             resume.status       = data['status']
-            print(resume.description)
             resume.save(update_fields=['title','name','email','contact','description','image_url','status'])
 
             return HttpResponse(status=200)
@@ -660,33 +660,33 @@ class UserMatchUpResumeView(View):
 
         if len(mainResume.education_set.values())!=0:
             if mainResume.education_set.values()[0]['school']==None or mainResume.education_set.values()[0]['school']=="":
-                school = '학교 미입력'
+                school = ""
             else:
                 school = mainResume.education_set.values()[0]['school']
 
             if mainResume.education_set.values()[0]['specialism']==None or mainResume.education_set.values()[0]['specialism']=="":
-                specialism = '전공 미입력'
+                specialism = ""
             else:
                 specialism = mainResume.education_set.values()[0]['specialism']
         else:
-            school      = "학교 미입력"
-            specialism  = "전공 미입력"
+            school      = ""
+            specialism  = ""
 
         if len(mainResume.career_set.values())!=0:
             if mainResume.career_set.values()[0]['company']==None or mainResume.career_set.values()[0]['company']=="":
-                company = '직장 미입력'
+                company = ""
             else:
                 company = mainResume.career_set.values()[0]['company']
             if mainResume.career_set.values()[0]['position']==None or mainResume.career_set.values()[0]['position']=="":
-                position = '직책 미입력'
+                position = ""
             else:
                 position = mainResume.career_set.values()[0]['position']
         else:
-            company     = '직장 미입력'
-            position    = '직책 미입력'
+            company     = ""
+            position    = ""
 
         if mainResume.description==None or mainResume.description=="":
-            description="자기소개 미입력"
+            description=""
         else:
             description=mainResume.description
         data =[
