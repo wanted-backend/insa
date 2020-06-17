@@ -24,18 +24,21 @@ from company.models         import (Company, City, Foundation_year, Employee, In
 
 
 def getGPS_coordinates_for_KAKAO(address):
-    headers = {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'KakaoAK {}'.format(config.MYAPP_KEY['MYAPP_KEY'])
-    }
-    address = address.encode("utf-8")
-    p = urllib.parse.urlencode({'query': address})
-    api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
-    lat = api.json()['documents'][0]['x']
-    lng = api.json()['documents'][0]['y']
-    city = api.json()['documents'][0]['address']['region_1depth_name']
-    result = [lat, lng, city]
-    return result
+    try:
+        headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': 'KakaoAK {}'.format(config.MYAPP_KEY['MYAPP_KEY'])
+        }
+        address = address.encode("utf-8")
+        p = urllib.parse.urlencode({'query': address})
+        api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
+        lat = api.json()['documents'][0]['x']
+        lng = api.json()['documents'][0]['y']
+        city = api.json()['documents'][0]['address']['region_1depth_name']
+        result = [lat, lng, city]
+        return result
+    except:
+        return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
 class EmployeeView(View):
     def get(self, request):
@@ -109,6 +112,8 @@ class CompanyRegister(View):
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except User.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID USER'}, status=401)
 
     @login_decorator
     def get(self, request):
@@ -209,7 +214,21 @@ class CompanyInfomationModify(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
-class CompanyLogoModify(View):
+class CompanyLogo(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            company = Company.objects.get(user_id=request.user.id)
+            data = [
+                {
+                    'id':company.id,
+                    'logo':company.image_url
+                }
+            ]
+            return JsonResponse({'logo':data}, status=200)
+        except Company.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -267,12 +286,14 @@ class CompanyImageModify(View):
                 image_id = data['image_id']
                 company = Company.objects.prefetch_related('image_set').get(user_id=request.user.id)
                 image = company.image_set.get(id=image_id)
-                image.image_url = data['image_url']
+                image.image_url = '/static/'+data['image_url']
                 image.save()
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Image.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID IMAGES'}, status=401)
 
 class CompanyImageDelete(View):
     @login_decorator
@@ -301,9 +322,11 @@ class CompanyImageDelete(View):
 class CompanyPosition(View):
     @login_decorator
     def get(self, request, position_id):
-        company = Company.objects.get(user_id=request.user.id)
-        position = Position.objects.get(id=position_id)
+        company = Company.objects.prefetch_related('position_set','image_set').get(user_id=request.user.id)
+        images = company.image_set.filter(company_id=company.id)
+        position = company.position_set.get(id=position_id)
         address = Workplace.objects.get(company_id=company.id, represent=True)
+
         is_always = '상시' if position.always==True else position.expiry_date
         is_entry_min = 0 if position.entry==True else position.min_level
         is_entry_max = 1 if position.entry==True else position.max_level
@@ -314,6 +337,7 @@ class CompanyPosition(View):
                     'id':position.id,
                     'company_id':company.id,
                     'company':company.name,
+                    'image' : [image.image_url for image in images],
                     'name':position.name,
                     'role':{position.role.id:position.role.name},
                     'description':position.description,
@@ -340,7 +364,7 @@ class CompanyPosition(View):
             coordinates = getGPS_coordinates_for_KAKAO(address)
             city = City.objects.get(name=coordinates[2])
             company = Company.objects.get(user_id=request.user.id)
-            workplace = Workplace.objects.get(company_id=company.id, represent=True)
+        
             place = Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city_id = city.id,
@@ -349,8 +373,7 @@ class CompanyPosition(View):
                 lat = coordinates[0],
                 lng = coordinates[1]
             )
-            company = Company.objects.get(user_id=request.user.id)
-            place = Workplace.objects.get(company_id=company.id, represent=True)
+
             is_entry_min = 0 if data['entry']==True else data['min_level']
             is_entry_max = 1 if data['entry']==True else data['max_level']
             is_always = None if data['always']==True else data['expiry_date']
@@ -358,7 +381,7 @@ class CompanyPosition(View):
 
             position = Position.objects.create(
                 company_id = company.id,
-                workplace_id = place.id if place else workplace.id,
+                workplace_id = place.id,
                 min_level = int(is_entry_min),
                 max_level = is_entry_max,
                 entry = data['entry'],
@@ -380,11 +403,18 @@ class CompanyPosition(View):
                 positions = Position.objects.get(id=position.id)
                 positions.role = Role.objects.get(id=int(role))
                 positions.save()
+
+            Position_workplace.objects.create(
+                position_id = position.id,
+                workplace_id = place.id
+            )
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
+        except AttributeError:
+            return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
 def get_reward_currency(company_id):
     place = Workplace.objects.get(company_id=company_id)
@@ -403,7 +433,6 @@ class PositionList(View):
     def get(self, request):
         user = request.user
         company = Company.objects.prefetch_related('position_set', 'image_set').get(user_id=user.id)
-        print(company.id)
         positions = company.position_set.filter(company_id=company.id)
         workplace = Workplace.objects.filter(company_id=company.id)
         data = [
