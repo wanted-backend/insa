@@ -142,7 +142,7 @@ class LikedCompanies(View):
             ]
             return JsonResponse({'companies':data}, status=200)
         except Want.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID WANT'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class ResumeMainView(View):
     @login_decorator
@@ -505,7 +505,7 @@ class CompanyInterviewResume(View):
             ]
             return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class UserMatchUpView(View):
 
@@ -604,7 +604,7 @@ class CompanyRequestsResume(View):
             ]
             return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class UserMatchUpDetailView(View):
     @login_decorator
