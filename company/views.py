@@ -126,7 +126,7 @@ class CompanyRegister(View):
 
             address = data['address']
             coordinates = getGPS_coordinates_for_KAKAO(address)
-            
+
             Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city = City.objects.get(name=data['city']),
@@ -138,7 +138,7 @@ class CompanyRegister(View):
             )
 #            if coordinates[2] != data['city']:
 #                return JsonResponse({'MESSAGE': '주소와 지역이 맞지 않습니다.'}, status=401)
-                
+
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
@@ -820,8 +820,10 @@ class PositionAdvertisement(View):
 
         data = json.loads(request.body)
 
+        print(data)
         item = Position_item.objects.get(id=data['item_id'])
         item.click += 1
+        print(item.click)
         item.save()
 
         return HttpResponse(status=200)
@@ -834,7 +836,7 @@ class PositionMain(View):
             'popularity' : year_filter.annotate(count = Count('volunteers')).order_by('-count'),
             'compensation' : year_filter.order_by(F('total') * F('country__exchange_rate'))
         }
-        
+
         return sort[sort_by]
 
     def filter_year(self, year, sort_by, city_filter):
@@ -1315,7 +1317,7 @@ class CompanyMatchupSearch(View):
             4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
             5 : resume.filter(proposal__company_id = company_id)
             }
-        
+
         return self.keyword_search(keyword, country, year_from, year_to, lists[resume_list])
 
     def get_duration(self, end_year, end_month, start_year, start_month):
