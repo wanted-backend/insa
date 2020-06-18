@@ -901,9 +901,9 @@ class UserApplyView(View):
 
         applied_list =[
             {
-                'company' : position.company.name,
-                'position' : position.name,
-                'applied_at' : position.volunteers_set.get().created_at
+                'company' : position.position.company.name,
+                'position' : position.position.name,
+                'applied_at' : position.created_at
             } for position in applied_position
         ]
 
