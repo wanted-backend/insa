@@ -1313,7 +1313,7 @@ class CompanyMatchupSearch(View):
            -1 : resume,
             1 : resume.filter(company_matchup__company_id = company_id),
             2 : resume.filter(like__company_id = company_id),
-            3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
+            3 : resume.exclude(Q(reading__company_id = company_id) & Q(reading__read = 0)),
             4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
             5 : resume.filter(proposal__company_id = company_id)
             }
