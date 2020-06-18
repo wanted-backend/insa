@@ -6,6 +6,7 @@ import requests
 import datetime
 import monthdelta
 import math
+import time
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
@@ -24,7 +25,7 @@ from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career, Education
 from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration , Temp)
+                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration , Temp , Company_matchup_item)
 
 
 def getGPS_coordinates_for_KAKAO(address):
@@ -812,12 +813,13 @@ class PositionAdvertisement(View):
         ]
 
         return JsonResponse({'advertisement' : position_list}, status = 200)
-
+    
     def post(self,request):
 
         data = json.loads(request.body)
-
-        item = Position_item.objects.get(id=data['item_id'])
+        
+        position = Position.objects.get(id=data['item_id'])
+        item = Position_item.objects.get(position_id=position.id)
         item.click += 1
         item.save()
 
@@ -1078,11 +1080,14 @@ class MatchUpItem(View):
     
 @periodic_task(run_every=crontab(minute="59", hour="23"))
 def do_every_midnight():
-    
+    m_item = Company_matchup_item.objects.all()
     item = Position_item.objects.all()
     item.filter(Q(start_date__lte=date.today()) & Q(end_date__gte=date.today()) & Q(is_valid=True)).update(expiration=2)
     item.filter(Q(start_date__gte=date.today()) & Q(is_valid=True)).update(expiration=1)
     item.filter(Q(end_date__lte=date.today()) & Q(is_valid=True)).update(expiration=3)
+    m_item.filter(Q(matchup_item=1) & Q(created_at__lte=date.today() - datetime.timedelta(days=60))).update(expiration=False)
+    m_item.filter(Q(matchup_item=2) & Q(created_at__lte=date.today() - datetime.timedelta(days=30))).update(expiration=False)
+    
     
 class JobAdState(View):
 
@@ -1118,6 +1123,7 @@ class MatchUpPrepare(View):
         
         data  = json.loads(request.body)
         token = get_token()
+        print(data['amount'],data['merchant_uid'])
         try:
             token.prepare(amount=data['amount'],merchant_uid=data['merchant_uid'])
             
@@ -1143,25 +1149,49 @@ class MatchUpItemPurchased(View):
         user         = request.user
         token        = get_token()
         imp_uid      = request.POST.get('imp_uid')
-        print(imp_uid)
         merchant_uid = request.POST.get('merchant_uid')
-        paid_amount  = request.POST.get('paid_amount')
+        paid_amount  = int(request.POST.get('amount'))
+        print(imp_uid)
+        print(merchant_uid)
         print(paid_amount)
         get_status   = token.find_by_imp_uid(imp_uid)
         try:
-            paid = token.is_paid(paid_amount, imp_uid=imp_uid)
+            
+            paid = token.prepare_validate(merchant_uid=merchant_uid, amount=paid_amount )
+            print(paid)
         except:
             return JsonResponse({"message" : f"해당 imp_uid : {imp_uid} 의 내역을 찾을 수 없습니다."},status=401)        
         
         if paid :
-            return JsonResponse({"message" : "결제에 성공했습니다."},status=200)
+                company = Company.objects.get(user_id=user.id)
+                item    = Matchup_item.objects.get(price_amount=paid_amount)
+                if Company_matchup_item.objects.get(company_id=company.id).exists():
+                    m_item  = Company_matchup_item.objects.get(company_id=company.id)
+                    if m_item.expiration == False:
+                        m_item.matchup_item = item
+                        m_item.count        = item.count
+                        m_item.created_at   = date.today()
+                        m_item.expiration   = True
+                        m_item.save()
+                    else:
+                        m_item.created_at  += datetime.timedelta(days=item.days)
+                        m_item.matchup_item = item
+                        m_item.count       += item.count
+                        m_item.save()
+                else:
+                    Company_matchup_item.objects.create(
+                        company      = company,
+                        matchup_item = item,
+                        count        = item.count,
+                        expiration   = True,
+                    )
+                print("결제성공")
+                return JsonResponse({"message" : "결제에 성공했습니다."},status=200)
         else:
             if get_status['status'] != 'cancelled':
                 
                 try:
-                    
                     token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid) 
-                    
                 except Iamport.ResponseError as e:
                     
                     return JsonResponse({"error_code"    : e.code ,
@@ -1174,7 +1204,6 @@ class MatchUpItemPurchased(View):
                     
                 return JsonResponse({"message" : "결제 취소"},status=400)
             return JsonResponse({"message":"결제 정보가 맞지않아 결제에 실패했습니다."},status=400)
-            
 
 class CompanyReadingResume(View):
     

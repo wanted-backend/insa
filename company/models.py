@@ -289,6 +289,7 @@ class Company_matchup_item(models.Model):
     matchup_item = models.ForeignKey('Matchup_item', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expiration = models.BooleanField(default=0)
+    count = models.IntegerField(default=0)
 
     class Meta:
         db_table = 'companies_matchup_items'
