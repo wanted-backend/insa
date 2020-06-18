@@ -157,7 +157,7 @@ class CompanyRegister(View):
                 {
                     'id':company.id,
                     'name':company.name,
-                    'logo':company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id) else '',
+                    'logo':[company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)  else ''],
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
