@@ -626,6 +626,9 @@ class PositionApplyView(View):
         try:
             data = json.loads(request.body)
 
+            if Volunteers.objects.filter(position_id=position_id, user_id=request.user.id, resume_id=data['resume']).exists():
+                return JsonResponse({'message' : 'ALREADY_APPLIED'}, status=400)
+
             Volunteers.objects.create(
                 position_id = position_id,
                 user_id = request.user.id,
