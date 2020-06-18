@@ -589,7 +589,7 @@ class DetailView(View):
                             'company' : item.company.name,
                             'city' : item.city.name if item.city else None,
                             'country' : item.country.name,
-                            'reward' : get_reward_currency(position.id)
+                            'total_reward' : get_reward_currency(position.id)
                         } for item in Position.objects.order_by('?')
                             if item.role.job_category_id == position.role.job_category_id
                     ] [offset : limit]
@@ -799,8 +799,7 @@ class PositionAdvertisement(View):
         )
         position_list =[
             {
-                'id' : position.position.id,
-                'item_id': position.id,
+                'id': position.position.id,
                 'image' : position.position.company.image_set.first().image_url,
                 'company_logo' : position.position.company.image_url,
                 'name' : position.position.name,
@@ -882,7 +881,7 @@ class PositionMain(View):
         limit   = int(request.GET.get('limit', 20))
         offset  = int(request.GET.get('offset', 0))
         keyword = request.GET.get('keyword', None)
-        
+
         try:
             position_filter = self.keyword_search(country, city, year, sort_by, keyword)
             position_list =[
@@ -894,7 +893,7 @@ class PositionMain(View):
                     'city' : position.city.name if position.city else None,
                     'country' : position.country.name,
                     'total_reward' : get_reward_currency(position.id),
-                } for position in position_filter[offset : offset + limit]
+                } for position in position_filter.distinct()[offset : offset + limit]
             ]
             return JsonResponse({'position' : position_list}, status = 200)
 
@@ -1074,15 +1073,15 @@ class MatchUpItem(View):
         }for plan in item]
 
         return JsonResponse({"plans" : plans} , status=200)
-    
+
 @periodic_task(run_every=crontab(minute="59", hour="23"))
 def do_every_midnight():
-    
+
     item = Position_item.objects.all()
     item.filter(Q(start_date__lte=date.today()) & Q(end_date__gte=date.today()) & Q(is_valid=True)).update(expiration=2)
     item.filter(Q(start_date__gte=date.today()) & Q(is_valid=True)).update(expiration=1)
     item.filter(Q(end_date__lte=date.today()) & Q(is_valid=True)).update(expiration=3)
-    
+
 class JobAdState(View):
 
     @login_decorator
@@ -1105,40 +1104,40 @@ class JobAdState(View):
         return JsonResponse({"response" : state},status=200)
 
 def get_token():
-    
+
     iamport = Iamport(imp_key=config.IMP_KEY, imp_secret=config.IMP_SECRET)
-    
-    return iamport 
+
+    return iamport
 
 class MatchUpPrepare(View):
-    
+
     @login_decorator
     def post(self,request):
-        
+
         data  = json.loads(request.body)
         token = get_token()
         try:
             token.prepare(amount=data['amount'],merchant_uid=data['merchant_uid'])
-            
+
         except KeyError:
-            
+
             return JsonResponse({"message" : "키 값이 잘못되었습니다"},status=401)
-        
+
         except Iamport.ResponseError as e:
-            
+
             return JsonResponse({"message" : "iamport 서버 응답 에러"},status=401)
-        
+
         except Iamport.HttpError as http_error:
-            
+
             return JsonResponse({"message" : "상태 응답 에러"},status=400)
-        
+
         return HttpResponse(status=200)
-        
+
 class MatchUpItemPurchased(View):
-        
+
     @login_decorator
     def post(self,request):
-        
+
         user         = request.user
         token        = get_token()
         imp_uid      = request.POST.get('imp_uid')
@@ -1150,33 +1149,33 @@ class MatchUpItemPurchased(View):
         try:
             paid = token.is_paid(paid_amount, imp_uid=imp_uid)
         except:
-            return JsonResponse({"message" : f"해당 imp_uid : {imp_uid} 의 내역을 찾을 수 없습니다."},status=401)        
-        
+            return JsonResponse({"message" : f"해당 imp_uid : {imp_uid} 의 내역을 찾을 수 없습니다."},status=401)
+
         if paid :
             return JsonResponse({"message" : "결제에 성공했습니다."},status=200)
         else:
             if get_status['status'] != 'cancelled':
-                
+
                 try:
-                    
-                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid) 
-                    
+
+                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid)
+
                 except Iamport.ResponseError as e:
-                    
+
                     return JsonResponse({"error_code"    : e.code ,
                                          "error_message" : e.message },status=401)
-                    
+
                 except Iamport.HttpError as http_error:
 
                     return JsonResponse({"error_code"    : http_error.code,
                                          "error_message" : http_error.reason},status=401)
-                    
+
                 return JsonResponse({"message" : "결제 취소"},status=400)
             return JsonResponse({"message":"결제 정보가 맞지않아 결제에 실패했습니다."},status=400)
-            
+
 
 class CompanyReadingResume(View):
-    
+
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -1267,7 +1266,7 @@ class TagSearch(View):
 
 class CompanyMatchupSearch(View):
     def filter_year(self, year_from, year_to, country_filter):
-        if (Q(year_from == 0) & Q(year_to == 20)):
+        if year_from == 0 and year_to == 20:
             year_filter = country_filter
         else:
             year_filter = country_filter.filter(Q(total_work__gte=year_from) & Q(total_work__lte=year_to))
@@ -1292,6 +1291,7 @@ class CompanyMatchupSearch(View):
                 keyword_filter.add(Q(education__school__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(matchup_skill__skill__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(description__icontains = keyword), Q.OR)
+                keyword_filter.add(Q(resume_role__role__name__icontains = keyword), Q.OR)
 
             keyword_filter = resume_list.filter(keyword_filter)
         else:
@@ -1333,7 +1333,7 @@ class CompanyMatchupSearch(View):
             company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
             total_amount  = len(resume_search)
-            
+
             resume_list = [
                 {
                     'id' : resume.id,
@@ -1362,7 +1362,7 @@ class CompanyMatchupSearch(View):
                                                             Q(company_id = company_id)
                                                             & Q(resume_id = resume.id)
                                                             ).exists()
-                } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
+                } for resume in resume_search.distinct().order_by('-created_at')[offset : offset + limit]
             ]
 
             return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)
