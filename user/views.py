@@ -136,7 +136,7 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id) else '',
                     'date':want.created_at
                 } for want in companies
             ]
@@ -499,7 +499,7 @@ class CompanyInterviewResume(View):
                     'id':interview.id,
                     'company_id':interview.company.id,
                     'name':interview.company.name,
-                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id) else '',
                     'date':interview.created_at
                 } for interview in interviews
             ]
@@ -598,7 +598,7 @@ class CompanyRequestsResume(View):
                     'id':request.id,
                     'company_id':request.company.id,
                     'name':request.company.name,
-                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id) else '',
                     'date':request.created_at
                 } for request in requests_resume
             ]

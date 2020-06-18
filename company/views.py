@@ -126,6 +126,7 @@ class CompanyRegister(View):
 
             address = data['address']
             coordinates = getGPS_coordinates_for_KAKAO(address)
+
             Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city = City.objects.get(name=data['city']),
@@ -135,6 +136,9 @@ class CompanyRegister(View):
                 lat = coordinates[0],
                 lng = coordinates[1]
             )
+#            if coordinates[2] != data['city']:
+#                return JsonResponse({'MESSAGE': '주소와 지역이 맞지 않습니다.'}, status=401)
+
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
@@ -153,7 +157,7 @@ class CompanyRegister(View):
                 {
                     'id':company.id,
                     'name':company.name,
-                    'logo':company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)[1] else '',
+                    'logo':company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id) else '',
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
@@ -832,6 +836,7 @@ class PositionMain(View):
             'popularity' : year_filter.annotate(count = Count('volunteers')).order_by('-count'),
             'compensation' : year_filter.order_by(F('total') * F('country__exchange_rate'))
         }
+
         return sort[sort_by]
 
     def filter_year(self, year, sort_by, city_filter):
@@ -839,7 +844,7 @@ class PositionMain(View):
         year = {
             -1 : city_filter,
              0 : city_filter.filter(Q(entry = True) | Q(min_level = 0)),
-            10 : city_filter.filter(min_level__lte = year)
+            10 : city_filter.filter(Q(min_level__gte = year) | Q(max_level__gte = year))
         }.get(year, year_filter)
 
         return self.sort_position(sort_by, year)
