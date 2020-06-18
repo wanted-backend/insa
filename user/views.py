@@ -229,8 +229,6 @@ class UserResumeWriteView(View):
         try:
             data = json.loads(request.body)
 
-            print(data)
-
             res = Resume.objects.get(id=main_resume_id)
 
             res.title        = data['title']
@@ -240,12 +238,11 @@ class UserResumeWriteView(View):
             res.description  = data['about']
             res.image_url    = data['image']
             res.status       = data['status']
-            print(res.title)
+
             res.save()
             transaction.commit()
-            print(res.title)
-            #res.save(update_fields=['title','name','email','contact','description','image_url','status'])
-            #res.refresh_from_db()
+            res.save()
+
             return JsonResponse({'this':"받아랏"}, status=200)
 
         except KeyError:
@@ -901,6 +898,7 @@ class UserApplyView(View):
             .select_related('position')
             .filter(user_id=request.user.id)
         )
+
         applied_list =[
             {
                 'company' : position.company.name,
