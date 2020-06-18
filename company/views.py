@@ -816,8 +816,10 @@ class PositionAdvertisement(View):
 
         data = json.loads(request.body)
 
+        print(data)
         item = Position_item.objects.get(id=data['item_id'])
         item.click += 1
+        print(item.click)
         item.save()
 
         return HttpResponse(status=200)
@@ -1302,15 +1304,16 @@ class CompanyMatchupSearch(View):
     def select_resume_list(self, keyword, country, year_from, year_to, resume_list, company_id):
         resume = Resume.objects.filter(is_matchup = 1)
 
-        resume_list = {
+        lists = {
+           -1 : resume,
             1 : resume.filter(company_matchup__company_id = company_id),
             2 : resume.filter(like__company_id = company_id),
             3 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 0)),
             4 : resume.filter(Q(reading__company_id = company_id) & Q(reading__read = 1)),
             5 : resume.filter(proposal__company_id = company_id)
-            }.get(resume_list, resume)
+            }
 
-        return self.keyword_search(keyword, country, year_from, year_to, resume_list)
+        return self.keyword_search(keyword, country, year_from, year_to, lists[resume_list])
 
     def get_duration(self, end_year, end_month, start_year, start_month):
         day = 1
