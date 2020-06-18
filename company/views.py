@@ -563,7 +563,7 @@ class DetailView(View):
                             'company' : item.company.name,
                             'city' : item.city.name if item.city else None,
                             'country' : item.country.name,
-                            'reward' : get_reward_currency(position.id)
+                            'total_reward' : get_reward_currency(position.id)
                         } for item in Position.objects.order_by('?')
                             if item.role.job_category_id == position.role.job_category_id
                     ] [offset : limit]
@@ -773,8 +773,7 @@ class PositionAdvertisement(View):
         )
         position_list =[
             {
-                'id' : position.position.id,
-                'item_id': position.id,
+                'id': position.position.id,
                 'image' : position.position.company.image_set.first().image_url,
                 'company_logo' : position.position.company.image_url,
                 'name' : position.position.name,
@@ -868,7 +867,7 @@ class PositionMain(View):
                     'city' : position.city.name if position.city else None,
                     'country' : position.country.name,
                     'total_reward' : get_reward_currency(position.id),
-                } for position in position_filter[offset : offset + limit]
+                } for position in position_filter.distinct()[offset : offset + limit]
             ]
 
             return JsonResponse({'position' : position_list}, status = 200)
@@ -1176,7 +1175,7 @@ class TagSearch(View):
 
 class CompanyMatchupSearch(View):
     def filter_year(self, year_from, year_to, country_filter):
-        if (Q(year_from == 0) & Q(year_to == 20)):
+        if year_from == 0 and year_to == 20:
             year_filter = country_filter
         else:
             year_filter = country_filter.filter(Q(total_work__gte=year_from) & Q(total_work__lte=year_to))
@@ -1201,6 +1200,7 @@ class CompanyMatchupSearch(View):
                 keyword_filter.add(Q(education__school__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(matchup_skill__skill__icontains = keyword), Q.OR)
                 keyword_filter.add(Q(description__icontains = keyword), Q.OR)
+                keyword_filter.add(Q(resume_role__role__name__icontains = keyword), Q.OR)
 
             keyword_filter = resume_list.filter(keyword_filter)
         else:
@@ -1270,7 +1270,7 @@ class CompanyMatchupSearch(View):
                                                             Q(company_id = company_id)
                                                             & Q(resume_id = resume.id)
                                                             ).exists()
-                } for resume in resume_search.order_by('-created_at')[offset : offset + limit]
+                } for resume in resume_search.distinct().order_by('-created_at')[offset : offset + limit]
             ]
 
             return JsonResponse({'resume_search' : resume_list, 'total_amount' : total_amount}, status = 200)

@@ -4,6 +4,7 @@ import jwt
 import re
 import time
 
+from django.db          import transaction
 from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
@@ -230,18 +231,22 @@ class UserResumeWriteView(View):
 
             print(data)
 
-            resume = Resume.objects.get(id=main_resume_id)
+            res = Resume.objects.get(id=main_resume_id)
 
-            resume.title        = data['title']
-            resume.name         = data['name']
-            resume.email        = data['email']
-            resume.contact      = data['phone']
-            resume.description  = data['about']
-            resume.image_url    = data['image']
-            resume.status       = data['status']
-            resume.save(update_fields=['title','name','email','contact','description','image_url','status'])
-
-            return HttpResponse(status=200)
+            res.title        = data['title']
+            res.name         = data['name']
+            res.email        = data['email']
+            res.contact      = data['phone']
+            res.description  = data['about']
+            res.image_url    = data['image']
+            res.status       = data['status']
+            print(res.title)
+            res.save()
+            transaction.commit()
+            print(res.title)
+            #res.save(update_fields=['title','name','email','contact','description','image_url','status'])
+            #res.refresh_from_db()
+            return JsonResponse({'this':"받아랏"}, status=200)
 
         except KeyError:
             return JsonResponse({'MESSAGE':'keyerror'}, status=401)
@@ -480,7 +485,7 @@ class CareerResultView(View):
 
     @login_decorator
     def delete(self, request, main_career_id):
-
+        data = json.loads(request.body)
         row = Result.objects.get(id=data['id'])
         row.delete()
 
@@ -866,7 +871,15 @@ def get_reward_currency(position_id):
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
-        position_list = Position.objects.filter(bookmark__user_id=request.user.id)
+        position_list = (
+            Position
+            .objects
+            .select_related(
+                'company',
+                'country',
+                'city'
+            ).filter(bookmark__user_id=request.user.id)
+        )
         is_bookmarked =[{
             'id' : position.id,
             'image' : position.company.image_set.first().image_url,
@@ -883,16 +896,15 @@ class UserApplyView(View):
     @login_decorator
     def get(self, request):
         applied_position = (
-            Position
+            Volunteers
             .objects
-            .select_related('company').
-            prefetch_related('volunteers_set')
-            .filter(volunteers__user_id = request.user.id)
+            .select_related('position')
+            .filter(user_id=request.user.id)
         )
         applied_list =[{
-            'company' : position.company.name,
-            'position' : position.name,
-            'applied_at' : position.volunteers_set.get().created_at
+            'company' : position.position.company.name,
+            'position' : position.position.name,
+            'applied_at' : position.created_at
         } for position in applied_position]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)
