@@ -136,7 +136,7 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'image':Image.objects.filter(company_id=want.company.id).first().image_url if Image.objects.filter(company_id=want.company.id) else None,
+                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id)[1] else '',
                     'date':want.created_at
                 } for want in companies
             ]
@@ -502,7 +502,7 @@ class CompanyInterviewResume(View):
                     'id':interview.id,
                     'company_id':interview.company.id,
                     'name':interview.company.name,
-                    'image':Image.objects.filter(company_id=interview.company.id).first().image_url if Image.objects.filter(company_id=interview.company.id) else None,
+                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id)[1] else '',
                     'date':interview.created_at
                 } for interview in interviews
             ]
@@ -601,7 +601,7 @@ class CompanyRequestsResume(View):
                     'id':request.id,
                     'company_id':request.company.id,
                     'name':request.company.name,
-                    'image':Image.objects.filter(company_id=request.company.id).first().image_url if Image.objects.filter(company_id=request.company.id) else None,
+                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id)[1] else '',
                     'date':request.created_at
                 } for request in requests_resume
             ]
@@ -901,10 +901,12 @@ class UserApplyView(View):
             .select_related('position')
             .filter(user_id=request.user.id)
         )
-        applied_list =[{
-            'company' : position.position.company.name,
-            'position' : position.position.name,
-            'applied_at' : position.created_at
-        } for position in applied_position]
+        applied_list =[
+            {
+                'company' : position.company.name,
+                'position' : position.name,
+                'applied_at' : position.volunteers_set.get().created_at
+            } for position in applied_position
+        ]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)

@@ -9,12 +9,16 @@ import math
 
 from django.http            import JsonResponse, HttpResponse
 from django.views           import View
-from django.db.models       import Q, Count, F
+from django.db.models       import Q, Count, F , When
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils           import timezone
 
 from datetime               import date
-# from iamport                import Iamport
+from iamport                import Iamport
+from celery                 import task
+from celery.decorators      import periodic_task
+from celery.task.schedules  import crontab
+from celery.utils.log       import get_task_logger
 
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career, Education
@@ -32,8 +36,8 @@ def getGPS_coordinates_for_KAKAO(address):
         address = address.encode("utf-8")
         p = urllib.parse.urlencode({'query': address})
         api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
-        lat = api.json()['documents'][0]['x']
-        lng = api.json()['documents'][0]['y']
+        lat = api.json()['documents'][0]['y']
+        lng = api.json()['documents'][0]['x']
         city = api.json()['documents'][0]['address']['region_1depth_name']
         result = [lat, lng, city]
         return result
@@ -72,6 +76,28 @@ class CityView(View):
             } for city in cities
         ]
         return JsonResponse({'cities':data}, status=200)
+
+class FoundationYearView(View):
+    def get(self, request):
+        years = Foundation_year.objects.all()
+        data = [
+            {
+                'id':year.id,
+                'year':year.name
+            } for year in years
+        ]
+        return JsonResponse({'years':data}, status=200)
+
+class IndustryView(View):
+    def get(self, request):
+        industries = Industry.objects.all()
+        data = [
+            {
+                'id':industry.id,
+                'industry':industry.name
+            } for industry in industries
+        ]
+        return JsonResponse({'industries':data}, status=200)
 
 class CompanyRegister(View):
     @login_decorator
@@ -127,7 +153,7 @@ class CompanyRegister(View):
                 {
                     'id':company.id,
                     'name':company.name,
-                    'logo':company.image_set.first().image_url if company.image_set.first() else None,
+                    'logo':company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)[1] else '',
                     'description':company.description,
                     'website':company.website,
                     'workplace':[(
@@ -443,7 +469,7 @@ class PositionList(View):
         data = [
             {
                 'id' : position.id,
-                'image' : position.company.image_set.first().image_url if position.company.image_set.first() else None,
+                'image' : company.image_set.filter(company_id=company.id)[1].image_url if company.image_set.filter(company_id=company.id)[1] else '',
                 'name' : position.name,
                 'company' : position.company.name,
                 'city' : workplace.first().city.name,
@@ -869,11 +895,10 @@ class PositionMain(View):
                     'total_reward' : get_reward_currency(position.id),
                 } for position in position_filter.distinct()[offset : offset + limit]
             ]
-
             return JsonResponse({'position' : position_list}, status = 200)
 
         except Position.DoesNotExist:
-            return JsonResponse({'message':'INVALID_POSITION'}, status=400)
+            return JsonResponse({'message' : 'INVALID_POSITION'}, status = 400)
 
 class JobAdPosition(View):
 
@@ -1049,6 +1074,14 @@ class MatchUpItem(View):
 
         return JsonResponse({"plans" : plans} , status=200)
 
+@periodic_task(run_every=crontab(minute="59", hour="23"))
+def do_every_midnight():
+
+    item = Position_item.objects.all()
+    item.filter(Q(start_date__lte=date.today()) & Q(end_date__gte=date.today()) & Q(is_valid=True)).update(expiration=2)
+    item.filter(Q(start_date__gte=date.today()) & Q(is_valid=True)).update(expiration=1)
+    item.filter(Q(end_date__lte=date.today()) & Q(is_valid=True)).update(expiration=3)
+
 class JobAdState(View):
 
     @login_decorator
@@ -1056,7 +1089,8 @@ class JobAdState(View):
 
         user = request.user
         company = Company.objects.get(user_id=user.id)
-        item = Position_item.objects.filter(company_id=company.id)
+        item = Position_item.objects.filter(Q(company_id = company.id) &
+                                            Q(is_valid   = True))
 
         state = [{
             "item"          : stat.item.name, # 1 직무상단 2 네트워크 광고
@@ -1069,22 +1103,79 @@ class JobAdState(View):
 
         return JsonResponse({"response" : state},status=200)
 
+def get_token():
+
+    iamport = Iamport(imp_key=config.IMP_KEY, imp_secret=config.IMP_SECRET)
+
+    return iamport
+
+class MatchUpPrepare(View):
+
+    @login_decorator
+    def post(self,request):
+
+        data  = json.loads(request.body)
+        token = get_token()
+        try:
+            token.prepare(amount=data['amount'],merchant_uid=data['merchant_uid'])
+
+        except KeyError:
+
+            return JsonResponse({"message" : "키 값이 잘못되었습니다"},status=401)
+
+        except Iamport.ResponseError as e:
+
+            return JsonResponse({"message" : "iamport 서버 응답 에러"},status=401)
+
+        except Iamport.HttpError as http_error:
+
+            return JsonResponse({"message" : "상태 응답 에러"},status=400)
+
+        return HttpResponse(status=200)
+
 class MatchUpItemPurchased(View):
 
     @login_decorator
     def post(self,request):
 
-        data = json.loads(request.body)
+        user         = request.user
+        token        = get_token()
+        imp_uid      = request.POST.get('imp_uid')
+        print(imp_uid)
+        merchant_uid = request.POST.get('merchant_uid')
+        paid_amount  = request.POST.get('paid_amount')
+        print(paid_amount)
+        get_status   = token.find_by_imp_uid(imp_uid)
+        try:
+            paid = token.is_paid(paid_amount, imp_uid=imp_uid)
+        except:
+            return JsonResponse({"message" : f"해당 imp_uid : {imp_uid} 의 내역을 찾을 수 없습니다."},status=401)
 
-        DEFAULT_TEST_IMP_KEY = 'imp_apikey'
-        DEFAULT_TEST_IMP_SECRET = ('ekKoeW8RyKuT0zgaZsUtXXTLQ4AhPFW3ZGseDA6bkA5lamv9OqDMnxyeB9wqOsuO9W3Mx9YSJ4dTqJ3f')
+        if paid :
+            return JsonResponse({"message" : "결제에 성공했습니다."},status=200)
+        else:
+            if get_status['status'] != 'cancelled':
 
+                try:
 
-    # def get(self,request):
+                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid)
 
+                except Iamport.ResponseError as e:
+
+                    return JsonResponse({"error_code"    : e.code ,
+                                         "error_message" : e.message },status=401)
+
+                except Iamport.HttpError as http_error:
+
+                    return JsonResponse({"error_code"    : http_error.code,
+                                         "error_message" : http_error.reason},status=401)
+
+                return JsonResponse({"message" : "결제 취소"},status=400)
+            return JsonResponse({"message":"결제 정보가 맞지않아 결제에 실패했습니다."},status=400)
 
 
 class CompanyReadingResume(View):
+
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -1232,7 +1323,7 @@ class CompanyMatchupSearch(View):
     def get(self, request):
         offset      = int(request.GET.get('offset', 0))
         limit       = int(request.GET.get('limit', 10))
-        country     = request.GET.getlist('country', ['한국'])
+        country     = request.GET.getlist('country', ['all'])
         year_from   = int(request.GET.get('year_from', 0))
         year_to     = int(request.GET.get('year_to', 20))
         keyword     = request.GET.get('keyword', None)
@@ -1242,6 +1333,7 @@ class CompanyMatchupSearch(View):
             company_id    = Company.objects.get(user_id = request.user.id).id
             resume_search = self.select_resume_list(keyword, country, year_from, year_to, resume_list, company_id)
             total_amount  = len(resume_search)
+
             resume_list = [
                 {
                     'id' : resume.id,

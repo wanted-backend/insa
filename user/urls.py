@@ -1,5 +1,4 @@
 from django.urls import path
-
 from .views import (UserEmailExists, UserRegisterView, AdminRegisterView, ResumeView, LogInView,
                     UserResumeWriteView, ResumeDetailWriteView, ResumeDetailView, CareerResultView,
                     ResumeMainView, LikedCompanies, UserMatchUpView, UserMatchUpResumeView,
