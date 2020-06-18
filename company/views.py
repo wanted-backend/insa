@@ -1169,7 +1169,7 @@ class MatchUpItemPurchased(View):
         if paid :
                 company = Company.objects.get(user_id=user.id)
                 item    = Matchup_item.objects.get(price_amount=paid_amount)
-                if Company_matchup_item.objects.get(company_id=company.id).exists():
+                if Company_matchup_item.objects.filter(company_id=company.id).exists():
                     m_item  = Company_matchup_item.objects.get(company_id=company.id)
                     if m_item.expiration == False:
                         m_item.matchup_item = item
