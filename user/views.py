@@ -4,6 +4,7 @@ import jwt
 import re
 import time
 
+from django.db          import transaction
 from django.http        import JsonResponse, HttpResponse
 from django.views       import View
 from partial_date       import PartialDateField
@@ -135,13 +136,13 @@ class LikedCompanies(View):
                     'id':want.id,
                     'company_id':want.company.id,
                     'name':want.company.name,
-                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=want.company.id)[1].image_url if Image.objects.filter(company_id=want.company.id) else '',
                     'date':want.created_at
                 } for want in companies
             ]
             return JsonResponse({'companies':data}, status=200)
         except Want.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID WANT'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class ResumeMainView(View):
     @login_decorator
@@ -228,20 +229,21 @@ class UserResumeWriteView(View):
         try:
             data = json.loads(request.body)
 
-            print(data)
+            res = Resume.objects.get(id=main_resume_id)
 
-            resume = Resume.objects.get(id=main_resume_id)
+            res.title        = data['title']
+            res.name         = data['name']
+            res.email        = data['email']
+            res.contact      = data['phone']
+            res.description  = data['about']
+            res.image_url    = data['image']
+            res.status       = data['status']
 
-            resume.title        = data['title']
-            resume.name         = data['name']
-            resume.email        = data['email']
-            resume.contact      = data['phone']
-            resume.description  = data['about']
-            resume.image_url    = data['image']
-            resume.status       = data['status']
-            resume.save(update_fields=['title','name','email','contact','description','image_url','status'])
+            res.save()
+            transaction.commit()
+            res.save()
 
-            return HttpResponse(status=200)
+            return JsonResponse({'this':"받아랏"}, status=200)
 
         except KeyError:
             return JsonResponse({'MESSAGE':'keyerror'}, status=401)
@@ -480,7 +482,7 @@ class CareerResultView(View):
 
     @login_decorator
     def delete(self, request, main_career_id):
-
+        data = json.loads(request.body)
         row = Result.objects.get(id=data['id'])
         row.delete()
 
@@ -497,13 +499,13 @@ class CompanyInterviewResume(View):
                     'id':interview.id,
                     'company_id':interview.company.id,
                     'name':interview.company.name,
-                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=interview.company.id)[1].image_url if Image.objects.filter(company_id=interview.company.id) else '',
                     'date':interview.created_at
                 } for interview in interviews
             ]
             return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class UserMatchUpView(View):
 
@@ -596,13 +598,13 @@ class CompanyRequestsResume(View):
                     'id':request.id,
                     'company_id':request.company.id,
                     'name':request.company.name,
-                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id)[1] else '',
+                    'image':Image.objects.filter(company_id=request.company.id)[1].image_url if Image.objects.filter(company_id=request.company.id) else '',
                     'date':request.created_at
                 } for request in requests_resume
             ]
             return JsonResponse({'companies':data}, status=200)
         except Resume.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
+            return JsonResponse({'companies': []}, status=200)
 
 class UserMatchUpDetailView(View):
     @login_decorator
@@ -866,7 +868,15 @@ def get_reward_currency(position_id):
 class UserBookmark(View):
     @login_decorator
     def get(self, request):
-        position_list = Position.objects.filter(bookmark__user_id=request.user.id)
+        position_list = (
+            Position
+            .objects
+            .select_related(
+                'company',
+                'country',
+                'city'
+            ).filter(bookmark__user_id=request.user.id)
+        )
         is_bookmarked =[{
             'id' : position.id,
             'image' : position.company.image_set.first().image_url,
@@ -883,16 +893,18 @@ class UserApplyView(View):
     @login_decorator
     def get(self, request):
         applied_position = (
-            Position
+            Volunteers
             .objects
-            .select_related('company').
-            prefetch_related('volunteers_set')
-            .filter(volunteers__user_id = request.user.id)
+            .select_related('position')
+            .filter(user_id=request.user.id)
         )
-        applied_list =[{
-            'company' : position.company.name,
-            'position' : position.name,
-            'applied_at' : position.volunteers_set.get().created_at
-        } for position in applied_position]
+
+        applied_list =[
+            {
+                'company' : position.position.company.name,
+                'position' : position.position.name,
+                'applied_at' : position.created_at
+            } for position in applied_position
+        ]
 
         return JsonResponse({'applied_position' : applied_list}, status = 200)
