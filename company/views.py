@@ -23,11 +23,14 @@ from celery.utils.log       import get_task_logger
 
 from utils                  import login_decorator, login_check
 from user.models            import User, Matchup_skill, Want, Matchup_career, Resume, Career, Education
-from company.models         import (Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
+from company.models         import (
+                                    Company, City, Foundation_year, Employee, Industry, Workplace, Position, Company_matchup,
                                     Role, Position_workplace, Country, Tag, Company_tag, Bookmark, Image, Volunteers, Like, Theme,
-                                    Reading, Proposal, Category , Network , Position_item , Matchup_item , Item , Expiration , Temp , Company_matchup_item)
+                                    Reading, Proposal, Category, Network, Position_item, Matchup_item, Item, Expiration, Temp, 
+                                    Company_matchup_item
+                                   )
 
-
+# kakao map api로 위도, 경도, 도시를 구하는 함수
 def getGPS_coordinates_for_KAKAO(address):
     try:
         headers = {
@@ -37,14 +40,19 @@ def getGPS_coordinates_for_KAKAO(address):
         address = address.encode("utf-8")
         p = urllib.parse.urlencode({'query': address})
         api = requests.get("https://dapi.kakao.com/v2/local/search/address.json", headers=headers, params=p)
+
+        # 위도
         lat = api.json()['documents'][0]['y']
+        # 경도
         lng = api.json()['documents'][0]['x']
+        # 도시
         city = api.json()['documents'][0]['address']['region_1depth_name']
         result = [lat, lng, city]
         return result
     except:
         return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
+# 직원수 목록 api
 class EmployeeView(View):
     def get(self, request):
         employees = Employee.objects.all()
@@ -56,6 +64,7 @@ class EmployeeView(View):
         ]
         return JsonResponse({'employees':data}, status=200)
 
+# 국가 목록 api
 class CountryView(View):
     def get(self, request):
         countries = Country.objects.all()
@@ -67,6 +76,7 @@ class CountryView(View):
         ]
         return JsonResponse({'countries':data}, status=200)
 
+# 도시 목록 api
 class CityView(View):
     def get(self, request):
         cities = City.objects.all()
@@ -78,6 +88,7 @@ class CityView(View):
         ]
         return JsonResponse({'cities':data}, status=200)
 
+# 설립연도 목록 api
 class FoundationYearView(View):
     def get(self, request):
         years = Foundation_year.objects.all()
@@ -89,6 +100,7 @@ class FoundationYearView(View):
         ]
         return JsonResponse({'years':data}, status=200)
 
+# 산업군 목록 api
 class IndustryView(View):
     def get(self, request):
         industries = Industry.objects.all()
@@ -100,15 +112,18 @@ class IndustryView(View):
         ]
         return JsonResponse({'industries':data}, status=200)
 
+# 회사정보 등록 api
 class CompanyRegister(View):
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
 
         try:
+            # 회사정보는 한번만 등록 가능, 이미 등록되어있을 경우 에러
             if Company.objects.filter(user_id=request.user.id).exists():
                 return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
 
+            # 회사 생성
             Company(
                 user_id = request.user.id,
                 name = data['name'],
@@ -126,8 +141,10 @@ class CompanyRegister(View):
 			).save()
 
             address = data['address']
+            # 주소로 위에서 선언했던 함수를 이용해서 위도, 경도, 도시를 구함
             coordinates = getGPS_coordinates_for_KAKAO(address)
 
+            # 근무지 생성
             Workplace.objects.create(
                 company_id = Company.objects.get(user_id=request.user.id).id,
                 city = City.objects.get(name=data['city']),
@@ -137,8 +154,9 @@ class CompanyRegister(View):
                 lat = coordinates[0],
                 lng = coordinates[1]
             )
-#            if coordinates[2] != data['city']:
-#                return JsonResponse({'MESSAGE': '주소와 지역이 맞지 않습니다.'}, status=401)
+            # 입력한 도시와 주소가 맞지 않을 경우 에러
+            if coordinates[2] != data['city']:
+                return JsonResponse({'MESSAGE': '주소와 지역이 맞지 않습니다.'}, status=401)
 
             return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
@@ -148,6 +166,7 @@ class CompanyRegister(View):
         except AttributeError:
             return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
+    # 등록한 회사정보 확인
     @login_decorator
     def get(self, request):
         try:
@@ -181,52 +200,10 @@ class CompanyRegister(View):
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
-class WorkplaceView(View):
-    @login_decorator
-    def get(self, request):
-        try:
-            company = Company.objects.get(user_id=request.user.id)
-            workplace = Workplace.objects.filter(company_id=company.id)
-            data = [
-                {
-                    'id':place.id,
-                    'company_id':place.company.id,
-                    'company':place.company.name,
-                    'address':place.address,
-                    'lat':place.lat,
-                    'lng':place.lng,
-                    'represent':place.represent
-                } for place in workplace
-            ]
-            return JsonResponse({'company':data}, status=200)
-        except Company.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
-
-    @login_decorator
-    def post(self, request):
-        data = json.loads(request.body)
-        try:
-            address = data['address']
-            coordinates = getGPS_coordinates_for_KAKAO(address)
-            city = City.objects.get(name=coordinates[2])
-            company = Company.objects.get(user_id=request.user.id)
-            Workplace.objects.create(
-                company_id = Company.objects.get(user_id=request.user.id).id,
-                city_id = city.id,
-                country_id = city.country.id,
-                address = address,
-                lat = coordinates[0],
-                lng = coordinates[1]
-            )
-            return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
-        except KeyError:
-            return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
-        except Company.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
-
+# 회사정보 수정 api
 class CompanyInfomationModify(View):
     @login_decorator
-    def post(self, request):
+    def patch(self, request):
         data = json.loads(request.body)
         try:
             company = Company.objects.get(user_id=request.user.id)
@@ -248,6 +225,7 @@ class CompanyInfomationModify(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+# 회사 로고 등록, 수정, 확인 api
 class CompanyLogo(View):
     @login_decorator
     def get(self, request):
@@ -264,7 +242,7 @@ class CompanyLogo(View):
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
     @login_decorator
-    def post(self, request):
+    def patch(self, request):
         data = json.loads(request.body)
         try:
             company = Company.objects.get(user_id=request.user.id)
@@ -276,6 +254,7 @@ class CompanyLogo(View):
         except Company.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
 
+# 회사 대표 이미지 등록 api
 class CompanyImages(View):
     @login_decorator
     def post(self, request):
@@ -284,6 +263,7 @@ class CompanyImages(View):
             company = Company.objects.get(user_id=request.user.id)
             Image.objects.create(
                 company_id=company.id,
+                # 앞에 /static/을 붙여서 저장해야 프론트 서버에 저장된 이미지 파일을 불러올 수 있다.
                 image_url='/static/'+data['image_url']
             )
             images = company.image_set.filter(company_id=company.id)
@@ -313,7 +293,7 @@ class CompanyImages(View):
 
 class CompanyImageModify(View):
     @login_decorator
-    def post(self, request):
+    def patch(self, request):
         data = json.loads(request.body)
         try:
             if 'image_id' in data:
@@ -329,9 +309,10 @@ class CompanyImageModify(View):
         except Image.DoesNotExist:
             return JsonResponse({'MESSAGE': 'INVALID IMAGES'}, status=401)
 
+# 대표 이미지 삭제 api
 class CompanyImageDelete(View):
     @login_decorator
-    def post(self, request):
+    def delete(self, request):
         data = json.loads(request.body)
         try:
             if 'image_id' in data:
@@ -353,6 +334,7 @@ class CompanyImageDelete(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+# 포지션 등록 api
 class CompanyPosition(View):
     @login_decorator
     def get(self, request, position_id):
@@ -452,6 +434,7 @@ class CompanyPosition(View):
         except AttributeError:
             return JsonResponse({'MESSAGE': '올바른 주소를 입력해주세요'}, status=401)
 
+# 나라별 채용보상금 화폐단위 구하는 함수
 def get_reward_currency(company_id):
     place = Workplace.objects.get(company_id=company_id)
     currency = place.country.english_currency
@@ -464,6 +447,7 @@ def get_reward_currency(company_id):
         total_reward = currency + reward
         return total_reward
 
+# 기업이 등록한 포지션 목록 api
 class PositionList(View):
     @login_decorator
     def get(self, request):
@@ -484,6 +468,7 @@ class PositionList(View):
         ]
         return JsonResponse({'company':data}, status=200)
 
+# 기업이 이력서를 찜/찜 취소 api
 class CompanyLikedResume(View):
     @login_decorator
     def post(self, request):
@@ -748,30 +733,8 @@ class HomeView(View):
                              "Recommendation_week" : recommendations_of_the_week,
                             },status=200)
 
+# 기업이 유저에게 이력서 요청하는 api
 class CompanyRequestResume(View):
-    @login_decorator
-    def get(self, request):
-        try:
-            company = Company.objects.get(user_id=request.user.id)
-            requests = Company_matchup.objects.filter(company_id=company.id, status=True)
-            data = [
-                {
-                    'id':request.id,
-                    'resume_id':request.resume.id,
-                    'name':request.resume.user.name,
-                    'description':request.resume.description,
-                    'career':request.resume.matchup_career.year,
-                    'skills':list(Matchup_skill.objects.filter(resume_id=request.resume.id).values()),
-                    'work_info':list(Career.objects.filter(resume_id=request.resume.id).values()),
-                    'education':list(Education.objects.filter(resume_id=request.resume.id).values('school'))
-                } for request in requests
-            ]
-            return JsonResponse({'resume':data}, status=200)
-        except ValueError:
-            return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
-        except Company.DoesNotExist:
-            return JsonResponse({'MESSAGE': 'INVALID COMPANY'}, status=401)
-
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -791,6 +754,8 @@ class CompanyRequestResume(View):
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Resume.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class PositionAdvertisement(View):
     def get(self, request):
@@ -1212,8 +1177,8 @@ class MatchUpItemPurchased(View):
                 return JsonResponse({"message" : "결제 취소"},status=400)
             return JsonResponse({"message":"결제 정보가 맞지않아 결제에 실패했습니다."},status=400)
 
+# 기업이 이력서 열람하는 api
 class CompanyReadingResume(View):
-
     @login_decorator
     def post(self, request):
         data = json.loads(request.body)
@@ -1232,7 +1197,10 @@ class CompanyReadingResume(View):
                 return JsonResponse({'MESSAGE':'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Resume.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
+# 기업이 유저에게 면접 제안하는 api
 class CompanyProposalsResume(View):
     @login_decorator
     def post(self, request):
@@ -1253,6 +1221,8 @@ class CompanyProposalsResume(View):
             return JsonResponse({'MESSAGE': 'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
+        except Resume.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID RESUME'}, status=401)
 
 class PositionFilter(View):
     def get(self, request):
