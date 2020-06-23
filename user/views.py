@@ -4,30 +4,36 @@ import jwt
 import re
 import time
 
-from django.db          import transaction
-from django.http        import JsonResponse, HttpResponse
-from django.views       import View
-from partial_date       import PartialDateField
-from datetime           import datetime
-from django.db.models   import Q, F, Func, Value
+from django.db                  import transaction
+from django.http                import JsonResponse, HttpResponse
+from django.views               import View
+from partial_date               import PartialDateField
+from datetime                   import datetime
+from django.db.models           import Q, F, Func, Value
 from django.db.models.functions import Replace
 
-from utils              import login_decorator
-from insa.settings      import SECRET_KEY
+from utils                      import login_decorator
+from insa.settings              import SECRET_KEY
 
-from company.models     import Position, Company, Image, Country, City, Company_matchup, Proposal, Job_category, Role, Country, Volunteers, Bookmark
-from .models            import User, Security, Resume, Career, Result, Education, Award, Language, Test, Link, Level, Linguistic, Resume_file, Want, Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
+from company.models             import Position, Company, Image, Country, City, Company_matchup, \
+                                    Proposal, Job_category, Role, Country, Volunteers, Bookmark
+from .models                    import User, Security, Resume, Career, Result, Education, Award, \
+                                    Language, Test, Link, Level, Linguistic, Resume_file, Want, \
+                                    Matchup_career, Job_text, Resume_role, Matchup_skill, Matchup_job
 
+# 가입된 이메일인지 확인하는 api
 class UserEmailExists(View):
     def post(self, request):
         data = json.loads(request.body)
         try:
+            # 이메일이 있으면 True, 없으면 False
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'True'}, status=200)
             return JsonResponse({'MESSAGE':'False'}, status=200)
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+# 유저 회원가입 api
 class UserRegisterView(View):
     validation = {
 		'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
@@ -36,19 +42,22 @@ class UserRegisterView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
+
+            # 이미 가입된 이메일이 있으면 에러
             if User.objects.filter(email=data['email']).exists():
                 return JsonResponse({'MESSAGE':'이미 가입된 이메일입니다.'}, status=401)
 
-			# 빈 문자열 검사
+            # 빈 문자열 검사
             for value in data.values():
                 if value == '':
                     return JsonResponse({'MESSAGE':'입력 정보를 확인해주세요'}, status=401)
 
-			# 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
+            # 비밀번호 숫자, 영문, 특수문자 조합으로 6자리 이상인지 검증
             for value, validator in self.validation.items():
                 if not validator(data[value]):
                     return JsonResponse({'MESSAGE':'영문자, 숫자, 특수문자 사용하여 6자 이상 입력해주세요.'}, status=401)
 
+            # 가입된 이메일이 아니면 유저 생성
             User.objects.create(
                 email = data['email'],
                 name = data['name'],
@@ -59,6 +68,7 @@ class UserRegisterView(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+# 관리자 회원가입 api
 class AdminRegisterView(View):
     validation = {
         'password': lambda password: re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{6,}$", password)
@@ -91,16 +101,20 @@ class AdminRegisterView(View):
         except KeyError:
             return JsonResponse({'MESSAGE': 'INVALID KEYS'}, status=401)
 
+# login api
 class LogInView(View):
     def post(self, request):
         data = json.loads(request.body)
         try:
+            # 이메일이 있으면 해당 유저를 가져옴
             if User.objects.filter(email=data['email']).exists():
                 user = User.objects.get(email=data['email'])
 
+                # 입력한 비밀번호와 유저가 등록한 비밀번호가 같으면 토큰 생성
                 if bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
                     token = jwt.encode({'id': user.id}, SECRET_KEY, algorithm='HS256')
 
+                    # 유저 ip, 브라우저 타입, 로그인 날짜 기록
                     Security.objects.create(
                         user_id = user.id,
                         user_ip = request.META['REMOTE_ADDR'],
@@ -112,10 +126,16 @@ class LogInView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+# 토큰이 관리자인지 확인하는 api
 class IsAdminToken(View):
     def post(self, request):
         data = json.loads(request.body)
         try:
+            '''
+            data에 token이 있으면 토큰을 decode해서 유저id를 확인,
+            회사정보가 있는 유저인지 확인,
+            회사정보가 있으면 관리자(return True), 없으면 일반유저(return False)
+            '''
             if 'token' in data:
                 token = data['token']
                 user_id = jwt.decode(token, SECRET_KEY, algorithm='HS256')['id']
@@ -123,13 +143,16 @@ class IsAdminToken(View):
                 if company.exists():
                     return JsonResponse({'MESSAGE': True}, status=200)
                 return JsonResponse({'MESSAGE': False}, status=200)
+            return JsonResponse({'MESSAGE':'INVALID'}, status=401)
         except KeyError:
             return JsonResponse({'MESSAGE':'USER INVALID'}, status=401)
 
+# (원해요) 어떤 기업이 이력서를 찜했는지 확인하는 api
 class LikedCompanies(View):
     @login_decorator
     def get(self, request):
         try:
+            # 로그인 한 유저의 이력서를 찜한 회사를 찾아서 get
             companies = Want.objects.filter(user_id=request.user.id)
             data = [
                 {
@@ -488,6 +511,7 @@ class CareerResultView(View):
 
         return HttpResponse(status=200)
 
+# 로그인 한 유저에게 어떤 기업이 면접 제안을 보냈는지 보여주는 api
 class CompanyInterviewResume(View):
     @login_decorator
     def get(self, request):
@@ -587,6 +611,7 @@ class MatchUpDetailGetView(View):
 
         return HttpResponse(status=200)
 
+# 로그인 한 유저에게 이력서를 요청한 기업들을 보여주는 api
 class CompanyRequestsResume(View):
     @login_decorator
     def get(self, request):
