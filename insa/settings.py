@@ -152,7 +152,6 @@ CORS_ALLOW_HEADERS = (
 
 APPEND_SLASH = False
 
-'''
 LOGGING = {
      'disable_existing_loggers': False,
      'version': 1,
@@ -183,4 +182,4 @@ LOGGING = {
          },
      },
    }
-'''
+

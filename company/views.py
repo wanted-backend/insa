@@ -523,72 +523,69 @@ class DetailView(View):
         except:
             user_id = None
 
-        try:
-            position = (
-                Position
-                .objects
-                .select_related('company', 'role')
-                .prefetch_related('position_workplace_set')
-                .get(id = position_id)
-            )
-            workplace =  position.position_workplace_set.get().workplace
+        position = (
+            Position
+            .objects
+            .select_related('company', 'role')
+            .prefetch_related('position_workplace_set')
+            .get(id = position_id)
+        )
+        workplace =  position.position_workplace_set.get().workplace
 
-            position_list = [
-                {
-                    'id' : position_id,
-                    'detail_images' : [image.image_url for image in position.company.image_set.all()],
-                    'name' : position.name,
-                    'company' : position.company.name,
-                    'city' : position.city.name if position.city else None,
-                    'country' : position.country.name,
-                    'tag' : [tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
-                    'bookmark' : Bookmark.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
-                    'applied' : Volunteers.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
-                    'reward' :{
-                        'referrer':get_reward_currency(position.id),
-                        'volunteer':get_reward_currency(position.id)
+        position_list = [
+            {
+                'id' : position_id,
+                'detail_images' : [image.image_url for image in position.company.image_set.all()],
+                'name' : position.name,
+                'company' : position.company.name,
+                'city' : position.city.name if position.city else None,
+                'country' : position.country.name,
+                'tag' : [tag_list.tag.name for tag_list in position.company.company_tag_set.all()],
+                'bookmark' : Bookmark.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
+                'applied' : Volunteers.objects.filter(Q(user_id = user_id) & Q(position_id = position_id)).exists(),
+                'reward' :{
+                    'referrer':get_reward_currency(position.id),
+                    'volunteer':get_reward_currency(position.id)
+                },
+                'body' :{
+                    'description' : position.description,
+                    'main_task' : position.responsibility,
+                    'qualification' : position.qualification,
+                    'preffered' : position.preferred,
+                    'benefit' : position.benefit
+                },
+                'info' :{
+                    'always' :{
+                        'value' : position.always,
+                        'expiry_date' : position.expiry_date
                     },
-                    'body' :{
-                        'description' : position.description,
-                        'main_task' : position.responsibility,
-                        'qualification' : position.qualification,
-                        'preffered' : position.preferred,
-                        'benefit' : position.benefit
+                    'location' :{
+                        'full_location' : workplace.address,
+                        'lat' : workplace.lat,
+                        'lng' : workplace.lng,
                     },
-                    'info' :{
-                        'always' :{
-                            'value' : position.always,
-                            'expiry_date' : position.expiry_date
-                        },
-                        'location' :{
-                            'full_location' : workplace.address,
-                            'lat' : workplace.lat,
-                            'lng' : workplace.lng,
-                        },
-                        'company' :{
-                            'image' : position.company.image_url,
-                            'name' : position.company.name,
-                            'industry_name' : position.company.industry.name
-                        }
-                    },
-                    'recommendation' :[
-                        {
-                            'id' : item.id,
-                            'image' : item.company.image_set.first().image_url,
-                            'name' : item.name,
-                            'company' : item.company.name,
-                            'city' : item.city.name if item.city else None,
-                            'country' : item.country.name,
-                            'total_reward' : get_reward_currency(position.id)
-                        } for item in Position.objects.order_by('?')
-                            if item.role.job_category_id == position.role.job_category_id
-                    ] [offset : limit]
-                }
-            ]
-            return JsonResponse({'position' : position_list}, status = 200)
+                    'company' :{
+                        'image' : position.company.image_url,
+                        'name' : position.company.name,
+                        'industry_name' : position.company.industry.name
+                    }
+                },
+                'recommendation' :[
+                    {
+                        'id' : item.id,
+                        'image' : item.company.image_set.first().image_url,
+                        'name' : item.name,
+                        'company' : item.company.name,
+                        'city' : item.city.name if item.city else None,
+                        'country' : item.country.name,
+                        'total_reward' : get_reward_currency(position.id)
+                    } for item in Position.objects.order_by('?')
+                        if item.role.job_category_id == position.role.job_category_id
+                ] [offset : limit]
+            }
+        ]
+        return JsonResponse({'position' : position_list}, status = 200)
 
-        except Position.DoesNotExist:
-            return JsonResponse({'message' : 'INVALID_POSITION'}, status = 400)
 
 class PositionBookmarkView(View):
     @login_decorator
@@ -784,13 +781,13 @@ class PositionAdvertisement(View):
         ]
 
         return JsonResponse({'advertisement' : position_list}, status = 200)
-    
+
     def post(self,request):
 
         data = json.loads(request.body)
-        
+
         position = Position.objects.get(id=data['item_id'])
-        item = Position_item.objects.get(position_id=position.id)
+        item = Position_item.objects.filter(position_id=position.id)
         item.click += 1
         print(item.click)
         item.save()
@@ -962,7 +959,7 @@ class JobAdPurchase(View):
             company_id = Company.objects.filter(user_id=user.id).first().id
         )
 
-        Temp.objects.filter(user=user.id).delete()
+        Temp.objects.all().delete()
 
         Temp.objects.create(
             item       = Position_item.objects.get(id=item.id),
@@ -980,7 +977,7 @@ class JobAdPurchased(View):
         user = request.user
         data = json.loads(request.body)
 
-        tid = Temp.objects.get(user=user.id)
+        tid = Temp.objects.get()
 
         request_url = "https://kapi.kakao.com/v1/payment/approve"
 
@@ -1008,6 +1005,8 @@ class JobAdPurchased(View):
             Paid          = Position_item.objects.get(id=tid.item.id)
             Paid.is_valid = True
             Paid.save()
+
+            Temp.objects.all().delete()
 
         return JsonResponse({"is_Paid" : Is_Paid },status=200)
 
@@ -1060,7 +1059,7 @@ def do_every_midnight():
     item.filter(Q(end_date__lte=date.today()) & Q(is_valid=True)).update(expiration=3)
     m_item.filter(Q(matchup_item=1) & Q(created_at__lte=date.today() - datetime.timedelta(days=60))).update(expiration=False)
     m_item.filter(Q(matchup_item=2) & Q(created_at__lte=date.today() - datetime.timedelta(days=30))).update(expiration=False)
-    
+
 class JobAdState(View):
 
     @login_decorator
@@ -1128,7 +1127,7 @@ class MatchUpItemPurchased(View):
         print(paid_amount)
         get_status   = token.find_by_imp_uid(imp_uid)
         try:
-            
+
             paid = token.prepare_validate(merchant_uid=merchant_uid, amount=paid_amount )
             print(paid)
         except:
@@ -1163,7 +1162,7 @@ class MatchUpItemPurchased(View):
             if get_status['status'] != 'cancelled':
 
                 try:
-                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid) 
+                    token.cancel(u'결제금액이 맞지 않음',imp_uid=imp_uid)
                 except Iamport.ResponseError as e:
 
                     return JsonResponse({"error_code"    : e.code ,
