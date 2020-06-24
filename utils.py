@@ -33,9 +33,6 @@ def login_check(func):
 
         except jwt.DecodeError:
             return JsonResponse({'message' : 'INVALID_TOKEN'}, status = 401)
-        
-        except User.DoesNotExist:
-            return JsonResponse({'message' : 'INVALID_USER'}, status = 401)
-        
+
         return func(self, request, *args, **kwargs)
     return wrapper
