@@ -1,5 +1,5 @@
 ## Introduction
-Wanted clone (https://www.kakaofriends.com)<br>
+Wanted clone (https://www.wanted.com)<br>
 Developed by a team of 5 developers (1 Front-End, 4 Back-End)<br>
 
 원티드 프로젝트는 (주)insa에서 Python, Django와 JS, React의 가능성을 보기 위해서 진행하게 된 테스트 프로젝트입니다. 
