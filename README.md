@@ -40,7 +40,7 @@ Click the image to watch the video.
 - 이미지 업로드, 삭제 기능
 
 ## DataBase Modeling
-URL : https://aquerytool.com:443/aquerymain/index/?rurl=22d6dc60-d105-4245-9b3c-0a81f8c4bf4b&
+URL : https://aquerytool.com:443/aquerymain/index/?rurl=22d6dc60-d105-4245-9b3c-0a81f8c4bf4b&<br>
 Password : 501e8y
 
 ![wanted_modeling](https://user-images.githubusercontent.com/56547148/86570229-8d0ce700-bfaa-11ea-84d5-104d9c43b463.png)
