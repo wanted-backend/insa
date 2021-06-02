@@ -19,6 +19,6 @@ pytz==2020.1
 requests==2.21.0
 six==1.15.0
 sqlparse==0.3.1
-urllib3==1.24.3
+urllib3==1.26.5
 django-celery==3.3.1
 iamport-rest-client==0.8.1
