@@ -13,7 +13,7 @@ mariadb==0.9.58
 MonthDelta==0.9.1
 mysqlclient==1.4.6
 pycparser==2.20
-PyJWT==1.7.1
+PyJWT==2.4.0
 PyMySQL==0.9.3
 pytz==2020.1
 requests==2.21.0
